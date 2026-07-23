@@ -1,0 +1,375 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  ACCOUNTANT
+  OWNER
+  DEPENDENT
+}
+
+enum ChatJoinStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BillStatus {
+  DRAFT
+  ISSUED
+  DUE
+  PAID
+  OVERDUE
+  PARTIAL
+  PENDING_REVIEW
+}
+
+enum PaymentProofStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ContactCategory {
+  REQUEST
+  INQUIRY
+  COMPLAINT
+}
+
+enum ContactStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum NotificationType {
+  BILL_ISSUED
+  BILL_DUE
+  BILL_OVERDUE
+  PAYMENT_RECEIVED
+  PAYMENT_REJECTED
+  REGISTRATION_APPROVED
+  REGISTRATION_REJECTED
+  SERVICE_INQUIRY
+  SYSTEM
+}
+
+// ─── RESIDENNTS (original table, extended) ───────────────────────────────────
+
+model Resident {
+  id             Int       @id @default(autoincrement()) @map("RESIDENNT_ID")
+  area           String    @map("AREA")
+  buildingNo     String    @map("BUILDING_NO")
+  floorNo        Int       @map("FLOOR_NO")
+  apartmentNo    Int       @map("APARTMENT_NO")
+  residentType   String    @default("O") @map("RESIDENT_TYPE") // O=Owner, T=Tenant
+  residentName   String    @map("RESIDENT_NAME")
+  nationality    String    @default("مصري") @map("NATIONALTY")
+  mobile         String    @map("MOBILE")
+  landLine       String?   @map("LAND_LINE")
+  email          String?   @map("EMAIL")
+  openingBalance Float     @default(0) @map("OPENING_BALANCE")
+  balanceDate    DateTime? @map("BALANCE_DATE")
+  monthlyFees    Float     @default(0) @map("MONTHLY_FEES")
+  isServiceProvider Boolean @default(false) @map("IS_SERVICE_PROVIDER")
+  unitTypeId     Int?      @map("UNIT_TYPE_ID")
+  notes          String?   @map("NOTES")
+
+  unitType       UnitType? @relation(fields: [unitTypeId], references: [id])
+  users           User[]
+  transactions    FinancialTransaction[]
+  services        ServiceInformation[]
+  bills           Bill[]
+  notifications   Notification[]
+  paymentProofs   PaymentProof[]
+  contactRequests ContactRequest[]
+  dependents      Dependent[]
+
+  @@unique([area, buildingNo, floorNo, apartmentNo])
+  @@map("RESIDENNTS")
+}
+
+// ─── Dependents (household members with optional app login) ──────────────────
+
+model Dependent {
+  id         Int      @id @default(autoincrement())
+  residentId Int      @map("RESIDENNT_ID")
+  name       String
+  relation   String   // صلة القرابة: زوج، ابن، ...
+  mobile     String
+  email      String?
+  createdAt  DateTime @default(now()) @map("CREATED_AT")
+  updatedAt  DateTime @updatedAt @map("UPDATED_AT")
+
+  resident Resident @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  user     User?
+
+  @@map("DEPENDENTS")
+}
+
+// ─── Unit Types (apartment, villa, etc. with monthly fee) ────────────────────
+
+model UnitType {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  monthlyFees  Float    @default(0) @map("MONTHLY_FEES")
+  hasFloor     Boolean  @default(true) @map("HAS_FLOOR")
+  hasApartment Boolean  @default(true) @map("HAS_APARTMENT")
+  activeFlag   String   @default("Y") @map("ACTIVE_FLAG")
+  createdAt    DateTime @default(now()) @map("CREATED_AT")
+
+  residents Resident[]
+
+  @@map("UNIT_TYPES")
+}
+
+// ─── FINANCIAL_TRANSACTIONS (original table) ─────────────────────────────────
+
+model FinancialTransaction {
+  id         Int      @id @default(autoincrement()) @map("TRX_ID")
+  trxDate    DateTime @default(now()) @map("TRX_DATE")
+  residentId Int      @map("RESIDENNT_ID")
+  trxType    String?  @map("TRX_TYPE") // BIL, PAY, ADJ, OPN
+  drCr       String   @map("DR_CR") // D=Debit, C=Credit
+  trxAmount  Float    @map("TRX_AMOUNT")
+  notes      String?  @map("NOTES")
+  posted     String   @default("N") @map("POSTED")
+  billId     Int?     @map("BILL_ID")
+
+  resident Resident @relation(fields: [residentId], references: [id])
+  bill     Bill?    @relation(fields: [billId], references: [id])
+
+  @@map("FINANCIAL_TRANSACTIONS")
+}
+
+// ─── Service Types (catalog managed by admin/accountant) ─────────────────────
+
+model ServiceType {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  activeFlag String   @default("Y") @map("ACTIVE_FLAG")
+  createdAt  DateTime @default(now()) @map("CREATED_AT")
+
+  @@map("SERVICE_TYPES")
+}
+
+// ─── SERVICES_INFORMATION (original table, linked to resident) ──────────────
+
+model ServiceInformation {
+  id           Int      @id @default(autoincrement()) @map("SERVICE_ID")
+  residentId   Int?     @map("RESIDENNT_ID")
+  serviceType  String   @map("SERVICE_TYPE")
+  serviceName  String   @map("SERVICE_NAME")
+  registerDate DateTime @default(now()) @map("REGISTER_DATE")
+  mobile       String   @map("MOBILE")
+  landLine     String?  @map("LAND_LINE")
+  email        String?  @map("EMAIL")
+  notes        String?  @map("NOTES")
+  activeFlag   String   @default("Y") @map("ACTIVE_FLAG")
+
+  resident Resident? @relation(fields: [residentId], references: [id])
+
+  @@map("SERVICES_INFORMATION")
+}
+
+// ─── Users & Auth ────────────────────────────────────────────────────────────
+
+model User {
+  id               Int        @id @default(autoincrement())
+  email            String     @unique
+  password         String
+  name             String
+  role             Role       @default(OWNER)
+  status           UserStatus @default(APPROVED)
+  residentId       Int?       @map("RESIDENNT_ID")
+  dependentId      Int?       @unique @map("DEPENDENT_ID")
+  resetToken       String?    @map("RESET_TOKEN")
+  resetTokenExpiry DateTime?  @map("RESET_TOKEN_EXPIRY")
+  mustChangePassword Boolean  @default(false) @map("MUST_CHANGE_PASSWORD")
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  resident        Resident?        @relation(fields: [residentId], references: [id])
+  dependent       Dependent?       @relation(fields: [dependentId], references: [id], onDelete: Cascade)
+  notifications   Notification[]
+  paymentProofs   PaymentProof[]
+  contactRequests ContactRequest[]
+  chatGroupsCreated ChatGroup[]       @relation("ChatGroupCreator")
+  chatMemberships   ChatMember[]
+  chatJoinRequests  ChatJoinRequest[] @relation("ChatJoinRequester")
+  chatJoinReviews   ChatJoinRequest[] @relation("ChatJoinReviewer")
+  chatMessages      ChatMessage[]
+
+  @@map("USERS")
+}
+
+// ─── Bills ───────────────────────────────────────────────────────────────────
+
+model Bill {
+  id         Int        @id @default(autoincrement())
+  residentId Int        @map("RESIDENNT_ID")
+  period     String
+  amount     Float
+  dueDate    DateTime   @map("DUE_DATE")
+  status     BillStatus @default(ISSUED)
+  issuedAt   DateTime   @default(now()) @map("ISSUED_AT")
+  paidAt     DateTime?  @map("PAID_AT")
+  paidAmount Float      @default(0) @map("PAID_AMOUNT")
+  notes      String?
+  billType   String     @default("MONTHLY") @map("BILL_TYPE") // MONTHLY | EXTRA
+  title      String?    // label for one-time EXTRA bills
+
+  resident      Resident               @relation(fields: [residentId], references: [id])
+  transactions  FinancialTransaction[]
+  paymentProofs PaymentProof[]
+
+  @@unique([residentId, period])
+  @@map("BILLS")
+}
+
+// ─── Payment Proofs (upload image/PDF for accountant approval) ───────────────
+
+model PaymentProof {
+  id           Int                @id @default(autoincrement())
+  billId       Int                @map("BILL_ID")
+  residentId   Int                @map("RESIDENNT_ID")
+  userId       Int                @map("USER_ID")
+  amount       Float
+  fileName     String             @map("FILE_NAME")
+  filePath     String             @map("FILE_PATH")
+  fileMime     String             @map("FILE_MIME")
+  status       PaymentProofStatus @default(PENDING)
+  notes        String?
+  reviewNotes  String?            @map("REVIEW_NOTES")
+  reviewedById Int?               @map("REVIEWED_BY_ID")
+  reviewedAt   DateTime?          @map("REVIEWED_AT")
+  createdAt    DateTime           @default(now()) @map("CREATED_AT")
+
+  bill     Bill     @relation(fields: [billId], references: [id])
+  resident Resident @relation(fields: [residentId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@map("PAYMENT_PROOFS")
+}
+
+// ─── Contact Requests (request / inquiry / complaint) ──────────────────────
+
+model ContactRequest {
+  id            Int             @id @default(autoincrement())
+  residentId    Int             @map("RESIDENNT_ID")
+  userId        Int             @map("USER_ID")
+  category      ContactCategory
+  subject       String
+  message       String
+  status        ContactStatus   @default(PENDING)
+  staffResponse String?         @map("STAFF_RESPONSE")
+  reviewedById  Int?            @map("REVIEWED_BY_ID")
+  reviewedAt    DateTime?       @map("REVIEWED_AT")
+  createdAt     DateTime        @default(now()) @map("CREATED_AT")
+  updatedAt     DateTime        @updatedAt @map("UPDATED_AT")
+
+  resident Resident @relation(fields: [residentId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@map("CONTACT_REQUESTS")
+}
+
+// ─── Notifications ─────────────────────────────────────────────────────────
+
+model Notification {
+  id         Int              @id @default(autoincrement())
+  userId     Int?             @map("USER_ID")
+  residentId Int?             @map("RESIDENNT_ID")
+  type       NotificationType
+  title      String
+  message    String
+  read       Boolean          @default(false)
+  createdAt  DateTime         @default(now()) @map("CREATED_AT")
+
+  user     User?     @relation(fields: [userId], references: [id])
+  resident Resident? @relation(fields: [residentId], references: [id])
+
+  @@map("NOTIFICATIONS")
+}
+
+// ─── Chat groups (superadmin-managed) ───────────────────────────────────────
+
+model ChatGroup {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  createdById Int      @map("CREATED_BY_ID")
+  createdAt   DateTime @default(now()) @map("CREATED_AT")
+  updatedAt   DateTime @updatedAt @map("UPDATED_AT")
+
+  createdBy    User              @relation("ChatGroupCreator", fields: [createdById], references: [id])
+  members      ChatMember[]
+  joinRequests ChatJoinRequest[]
+  messages     ChatMessage[]
+
+  @@map("CHAT_GROUPS")
+}
+
+model ChatMember {
+  id          Int      @id @default(autoincrement())
+  chatGroupId Int      @map("CHAT_GROUP_ID")
+  userId      Int      @map("USER_ID")
+  joinedAt    DateTime @default(now()) @map("JOINED_AT")
+
+  chatGroup ChatGroup @relation(fields: [chatGroupId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatGroupId, userId])
+  @@map("CHAT_MEMBERS")
+}
+
+model ChatJoinRequest {
+  id           Int            @id @default(autoincrement())
+  chatGroupId  Int            @map("CHAT_GROUP_ID")
+  userId       Int            @map("USER_ID")
+  status       ChatJoinStatus @default(PENDING)
+  createdAt    DateTime       @default(now()) @map("CREATED_AT")
+  reviewedAt   DateTime?      @map("REVIEWED_AT")
+  reviewedById Int?           @map("REVIEWED_BY_ID")
+
+  chatGroup  ChatGroup @relation(fields: [chatGroupId], references: [id], onDelete: Cascade)
+  user       User      @relation("ChatJoinRequester", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?     @relation("ChatJoinReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([chatGroupId, userId])
+  @@map("CHAT_JOIN_REQUESTS")
+}
+
+model ChatMessage {
+  id          Int      @id @default(autoincrement())
+  chatGroupId Int      @map("CHAT_GROUP_ID")
+  userId      Int      @map("USER_ID")
+  body        String   @default("")
+  messageType String   @default("TEXT") @map("MESSAGE_TYPE") // TEXT | FILE | AUDIO
+  fileName    String?  @map("FILE_NAME")
+  filePath    String?  @map("FILE_PATH")
+  mimeType    String?  @map("MIME_TYPE")
+  fileSize    Int?     @map("FILE_SIZE")
+  createdAt   DateTime @default(now()) @map("CREATED_AT")
+
+  chatGroup ChatGroup @relation(fields: [chatGroupId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("CHAT_MESSAGES")
+}

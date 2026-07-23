@@ -1,6 +1,6 @@
 import type { User, Resident, Bill, Transaction, Service, Notification, DashboardStats, PaymentProof, ServiceType, UnitType, ContactRequest, Dependent, ChatGroupSummary, ChatGroupDetail, ChatMessage, ChatMember, ChatJoinRequest } from '../types';
 
-const API_BASE = '/api';
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api';
 
 function getToken(): string | null {
   return localStorage.getItem('token');

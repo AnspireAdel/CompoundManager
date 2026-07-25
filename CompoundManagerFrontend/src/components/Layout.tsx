@@ -15,7 +15,9 @@ import {
   Receipt,
   Send,
   Settings2,
+  Tags,
   User,
+  Wallet,
   Wrench,
   X,
   type LucideIcon,
@@ -62,13 +64,12 @@ export default function Layout() {
   const items: NavItem[] = [
     { to: '/', label: 'الرئيسية', icon: Home, end: true, show: true },
     { to: '/residents', label: 'الوحدات', icon: Building2, show: isAdmin || isAccountant },
-    { to: '/unit-types', label: 'أنواع الوحدات', icon: Layers, show: isAdmin || isAccountant },
     { to: '/registrations', label: 'طلبات التسجيل', icon: ClipboardList, show: isAdmin },
     { to: '/bills', label: 'الفواتير', icon: FileText, show: true },
     { to: '/payments', label: 'مستندات الدفع', icon: CreditCard, show: isAdmin || isAccountant },
     { to: '/transactions', label: 'المعاملات المالية', icon: Receipt, show: true },
+    { to: '/expenses', label: 'المصاريف', icon: Wallet, show: isAdmin || isAccountant },
     { to: '/services', label: 'الخدمات', icon: Wrench, show: true },
-    { to: '/service-types', label: 'أنواع الخدمات', icon: Settings2, show: isAdmin || isAccountant },
     { to: '/chats', label: 'المحادثات', icon: MessageCircle, show: true },
     { to: '/notifications', label: 'الإشعارات', icon: Bell, show: true },
     { to: '/send-notifications', label: 'إرسال إشعارات', icon: Send, show: isAdmin || isAccountant },
@@ -79,6 +80,9 @@ export default function Layout() {
       show: true,
     },
     { to: '/profile', label: 'الملف الشخصي', icon: User, show: true },
+    { to: '/unit-types', label: 'أنواع الوحدات', icon: Layers, show: isAdmin || isAccountant },
+    { to: '/service-types', label: 'أنواع الخدمات', icon: Settings2, show: isAdmin || isAccountant },
+    { to: '/expense-types', label: 'أنواع المصاريف', icon: Tags, show: isAdmin || isAccountant },
   ];
 
   const navLinks = (

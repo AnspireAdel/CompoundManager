@@ -102,6 +102,7 @@ model Resident {
   paymentProofs   PaymentProof[]
   contactRequests ContactRequest[]
   dependents      Dependent[]
+  expenses        Expense[]
 
   @@unique([area, buildingNo, floorNo, apartmentNo])
   @@map("RESIDENNTS")
@@ -171,6 +172,39 @@ model ServiceType {
   @@map("SERVICE_TYPES")
 }
 
+// ─── Expense Types (catalog for compound/unit expenses) ──────────────────────
+
+model ExpenseType {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  activeFlag String   @default("Y") @map("ACTIVE_FLAG")
+  createdAt  DateTime @default(now()) @map("CREATED_AT")
+
+  expenses Expense[]
+
+  @@map("EXPENSE_TYPES")
+}
+
+// ─── Expenses (compound-wide or linked to one unit) ───────────────────────────
+
+model Expense {
+  id            Int      @id @default(autoincrement())
+  expenseTypeId Int      @map("EXPENSE_TYPE_ID")
+  amount        Float    @map("AMOUNT")
+  expenseDate   DateTime @default(now()) @map("EXPENSE_DATE")
+  notes         String?  @map("NOTES")
+  residentId    Int?     @map("RESIDENNT_ID") // null = على الكومبوند كله
+  createdById   Int?     @map("CREATED_BY_ID")
+  createdAt     DateTime @default(now()) @map("CREATED_AT")
+  updatedAt     DateTime @updatedAt @map("UPDATED_AT")
+
+  expenseType ExpenseType @relation(fields: [expenseTypeId], references: [id])
+  resident    Resident?   @relation(fields: [residentId], references: [id])
+  createdBy   User?       @relation("ExpenseCreator", fields: [createdById], references: [id])
+
+  @@map("EXPENSES")
+}
+
 // ─── SERVICES_INFORMATION (original table, linked to resident) ──────────────
 
 model ServiceInformation {
@@ -217,6 +251,7 @@ model User {
   chatJoinRequests  ChatJoinRequest[] @relation("ChatJoinRequester")
   chatJoinReviews   ChatJoinRequest[] @relation("ChatJoinReviewer")
   chatMessages      ChatMessage[]
+  expensesCreated   Expense[]         @relation("ExpenseCreator")
 
   @@map("USERS")
 }

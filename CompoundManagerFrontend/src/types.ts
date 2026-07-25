@@ -124,6 +124,30 @@ export interface ServiceType {
   createdAt?: string;
 }
 
+export interface ExpenseType {
+  id: number;
+  name: string;
+  activeFlag: string;
+  createdAt?: string;
+}
+
+export interface Expense {
+  id: number;
+  expenseTypeId: number;
+  amount: number;
+  expenseDate: string;
+  notes?: string | null;
+  residentId?: number | null;
+  createdById?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+  expenseType?: ExpenseType;
+  resident?: Partial<Resident> & {
+    unitType?: { name: string; hasFloor?: boolean; hasApartment?: boolean } | null;
+  } | null;
+  createdBy?: { id: number; name: string; email: string } | null;
+}
+
 export interface Notification {
   id: number;
   type: string;
@@ -171,20 +195,18 @@ export interface DashboardStats {
     month: number;
     monthKey: string;
     label: string;
-    billsCount: number;
     issued: number;
     collected: number;
     remaining: number;
-    paidCount: number;
-    unpaidCount: number;
+    expenses: number;
+    net: number;
   }>;
   yearlyTotals?: {
-    billsCount: number;
     issued: number;
     collected: number;
     remaining: number;
-    paidCount: number;
-    unpaidCount: number;
+    expenses: number;
+    net: number;
   };
   totalResidents?: number;
   totalBills?: number;

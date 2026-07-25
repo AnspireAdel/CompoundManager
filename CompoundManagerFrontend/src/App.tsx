@@ -18,6 +18,8 @@ import RegistrationsPage from './pages/RegistrationsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import ServiceTypesPage from './pages/ServiceTypesPage';
 import UnitTypesPage from './pages/UnitTypesPage';
+import ExpenseTypesPage from './pages/ExpenseTypesPage';
+import ExpensesPage from './pages/ExpensesPage';
 import SendNotificationsPage from './pages/SendNotificationsPage';
 import ContactPage from './pages/ContactPage';
 import ChatsPage from './pages/ChatsPage';
@@ -46,9 +48,11 @@ export default function App() {
             <Route path="/bills" element={<BillsPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/expenses" element={<ExpensesPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/service-types" element={<ServiceTypesPage />} />
             <Route path="/unit-types" element={<UnitTypesPage />} />
+            <Route path="/expense-types" element={<ExpenseTypesPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/send-notifications" element={<SendNotificationsPage />} />
             <Route path="/contact" element={<ContactPage />} />

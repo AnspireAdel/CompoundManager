@@ -1,4 +1,4 @@
-import type { User, Resident, Bill, Transaction, Service, Notification, DashboardStats, PaymentProof, ServiceType, UnitType, ContactRequest, Dependent, ChatGroupSummary, ChatGroupDetail, ChatMessage, ChatMember, ChatJoinRequest } from '../types';
+import type { User, Resident, Bill, Transaction, Service, Notification, DashboardStats, PaymentProof, ServiceType, UnitType, ExpenseType, Expense, ContactRequest, Dependent, ChatGroupSummary, ChatGroupDetail, ChatMessage, ChatMember, ChatJoinRequest } from '../types';
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api';
 
@@ -264,6 +264,64 @@ export const api = {
 
   deleteUnitType: (id: number) =>
     request<void>(`/unit-types/${id}`, { method: 'DELETE' }),
+
+  getExpenseTypes: (manage?: boolean) =>
+    request<ExpenseType[]>(`/expense-types${manage ? '?manage=true' : ''}`),
+
+  createExpenseType: (name: string) =>
+    request<ExpenseType>('/expense-types', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  updateExpenseType: (id: number, data: { name?: string; activeFlag?: string }) =>
+    request<ExpenseType>(`/expense-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  toggleExpenseType: (id: number) =>
+    request<ExpenseType>(`/expense-types/${id}/toggle`, { method: 'PATCH' }),
+
+  deleteExpenseType: (id: number) =>
+    request<void>(`/expense-types/${id}`, { method: 'DELETE' }),
+
+  getExpenses: (params?: Record<string, string>) => {
+    const q = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<Expense[]>(`/expenses${q}`);
+  },
+
+  createExpense: (data: {
+    expenseTypeId: number;
+    amount: number;
+    expenseDate: string;
+    notes?: string | null;
+    residentId?: number | null;
+    scope: 'COMPOUND' | 'UNIT';
+  }) =>
+    request<Expense>('/expenses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateExpense: (
+    id: number,
+    data: {
+      expenseTypeId?: number;
+      amount?: number;
+      expenseDate?: string;
+      notes?: string | null;
+      residentId?: number | null;
+      scope?: 'COMPOUND' | 'UNIT';
+    }
+  ) =>
+    request<Expense>(`/expenses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteExpense: (id: number) =>
+    request<void>(`/expenses/${id}`, { method: 'DELETE' }),
 
   getNotifications: (unreadOnly?: boolean) =>
     request<Notification[]>(`/notifications${unreadOnly ? '?unreadOnly=true' : ''}`),

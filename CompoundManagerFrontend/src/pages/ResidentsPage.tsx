@@ -394,9 +394,8 @@ export default function ResidentsPage() {
                       onChange={(e) => setDepForm({ ...depForm, mobile: e.target.value })}
                     />
                     <Input
-                      placeholder="البريد (مطلوب)"
+                      placeholder="البريد (مطلوب عند الإضافة)"
                       type="email"
-                      required
                       value={depForm.email}
                       onChange={(e) => setDepForm({ ...depForm, email: e.target.value })}
                     />

@@ -25,7 +25,7 @@ function providerCard(resident: {
   area: string;
   buildingNo: string;
   floorNo: number;
-  apartmentNo: number;
+  apartmentNo: string;
   isServiceProvider: boolean;
   services?: Array<{
     id: number;

@@ -35,7 +35,7 @@ export interface Bill {
     area?: string;
     buildingNo: string;
     floorNo?: number;
-    apartmentNo: number;
+    apartmentNo: string;
     mobile?: string;
   };
 }
@@ -144,7 +144,7 @@ export interface Resident {
   area: string;
   buildingNo: string;
   floorNo: number;
-  apartmentNo: number;
+  apartmentNo: string;
   residentType?: string;
   residentName: string;
   nationality: string;

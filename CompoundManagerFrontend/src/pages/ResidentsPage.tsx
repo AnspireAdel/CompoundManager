@@ -21,7 +21,7 @@ const emptyForm = {
   area: 'A',
   buildingNo: '01',
   floorNo: 1,
-  apartmentNo: 1,
+  apartmentNo: '1',
   residentName: '',
   mobile: '',
   email: '',
@@ -66,7 +66,7 @@ export default function ResidentsPage() {
       unitTypeId,
       monthlyFees: type ? type.monthlyFees : form.monthlyFees,
       floorNo: type && !type.hasFloor ? 0 : form.floorNo || 1,
-      apartmentNo: type && !type.hasApartment ? 0 : form.apartmentNo || 1,
+      apartmentNo: type && !type.hasApartment ? '0' : form.apartmentNo || '1',
     });
   }
 
@@ -135,7 +135,7 @@ export default function ResidentsPage() {
       const payload = {
         ...form,
         floorNo: type?.hasFloor ? Number(form.floorNo) : 0,
-        apartmentNo: type?.hasApartment ? Number(form.apartmentNo) : 0,
+        apartmentNo: type?.hasApartment ? String(form.apartmentNo).trim() : '0',
         monthlyFees: Number(form.monthlyFees),
         unitTypeId: Number(form.unitTypeId),
         email: form.email || undefined,
@@ -350,11 +350,11 @@ export default function ResidentsPage() {
                   </FormField>
                 )}
                 {(selectedType?.hasApartment ?? true) && (
-                  <FormField label="الشقة">
+                  <FormField label="رقم الوحدة">
                     <Input
-                      type="number"
                       value={form.apartmentNo}
-                      onChange={(e) => setForm({ ...form, apartmentNo: +e.target.value })}
+                      onChange={(e) => setForm({ ...form, apartmentNo: e.target.value })}
+                      placeholder="مثال: 12 أو A1"
                       required
                     />
                   </FormField>
@@ -517,7 +517,7 @@ export default function ResidentsPage() {
                     {[
                       `${r.area}-${r.buildingNo}`,
                       r.unitType?.hasFloor !== false && r.floorNo ? `دور ${r.floorNo}` : null,
-                      r.unitType?.hasApartment !== false && r.apartmentNo ? `شقة ${r.apartmentNo}` : null,
+                      r.unitType?.hasApartment !== false && r.apartmentNo && r.apartmentNo !== '0' ? `وحدة ${r.apartmentNo}` : null,
                     ]
                       .filter(Boolean)
                       .join(' / ')}

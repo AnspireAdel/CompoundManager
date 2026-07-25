@@ -25,7 +25,7 @@ const registerSchema = z.object({
   area: z.string().max(3),
   buildingNo: z.string().max(3),
   floorNo: z.number().int().min(0).max(99).optional(),
-  apartmentNo: z.number().int().min(0).max(99).optional(),
+  apartmentNo: z.union([z.string(), z.number()]).transform((v) => String(v).trim()).optional(),
   residentType: z.enum(['O', 'T']),
   unitTypeId: z.number().int().positive(),
 });
@@ -71,7 +71,7 @@ router.post('/register', async (req, res) => {
   }
 
   let floorNo: number;
-  let apartmentNo: number;
+  let apartmentNo: string;
   try {
     ({ floorNo, apartmentNo } = resolveUnitNumbers(unitType, data.floorNo, data.apartmentNo));
   } catch (err) {

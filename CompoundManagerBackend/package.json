@@ -10,10 +10,14 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:push:turso": "tsx scripts/push-turso.ts",
     "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "prisma db push && tsx prisma/seed.ts"
+    "db:setup": "prisma db push && tsx prisma/seed.ts",
+    "db:setup:turso": "tsx scripts/push-turso.ts && tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
+    "@prisma/adapter-libsql": "^7.9.0",
     "@prisma/client": "^6.9.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.18",

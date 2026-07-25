@@ -3,18 +3,24 @@ type UnitTypeFlags = {
   hasApartment: boolean;
 };
 
-/** Normalize floor/apartment based on unit type flags. Unused fields store 0. */
+/** Normalize floor/apartment based on unit type flags. Unused apartment stores "0". */
 export function resolveUnitNumbers(
   unitType: UnitTypeFlags,
   floorNo?: number | null,
-  apartmentNo?: number | null,
-  options?: { preserveUnused?: { floorNo: number; apartmentNo: number } }
-): { floorNo: number; apartmentNo: number } {
+  apartmentNo?: string | number | null,
+  options?: { preserveUnused?: { floorNo: number; apartmentNo: string } }
+): { floorNo: number; apartmentNo: string } {
   if (unitType.hasFloor && (floorNo === undefined || floorNo === null)) {
     throw new Error('رقم الدور مطلوب لهذا النوع');
   }
-  if (unitType.hasApartment && (apartmentNo === undefined || apartmentNo === null || apartmentNo < 1)) {
-    throw new Error('رقم الشقة مطلوب لهذا النوع');
+
+  const apt =
+    apartmentNo === undefined || apartmentNo === null
+      ? ''
+      : String(apartmentNo).trim();
+
+  if (unitType.hasApartment && (!apt || apt === '0')) {
+    throw new Error('رقم الوحدة مطلوب لهذا النوع');
   }
 
   const preserved = options?.preserveUnused;
@@ -26,9 +32,9 @@ export function resolveUnitNumbers(
         ? preserved.floorNo
         : 0,
     apartmentNo: unitType.hasApartment
-      ? Number(apartmentNo)
+      ? apt
       : preserved
         ? preserved.apartmentNo
-        : 0,
+        : '0',
   };
 }

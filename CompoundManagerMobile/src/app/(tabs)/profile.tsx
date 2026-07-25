@@ -268,7 +268,7 @@ export default function ProfileScreen() {
 
   const unitType = resident?.unitType;
   const showFloor = unitType ? unitType.hasFloor : resident?.floorNo != null && resident.floorNo !== 0;
-  const showApartment = unitType ? unitType.hasApartment : resident?.apartmentNo != null && resident.apartmentNo !== 0;
+  const showApartment = unitType ? unitType.hasApartment : resident?.apartmentNo != null && resident.apartmentNo !== '' && resident.apartmentNo !== '0';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -315,7 +315,7 @@ export default function ProfileScreen() {
                 )}
                 {showApartment && (
                   <>
-                    <Text style={styles.label}>الشقة</Text>
+                    <Text style={styles.label}>رقم الوحدة</Text>
                     <TextInput style={[styles.input, styles.readonly]} value={displayValue(resident.apartmentNo)} editable={false} textAlign="right" />
                   </>
                 )}

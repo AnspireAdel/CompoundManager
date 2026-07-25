@@ -53,12 +53,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="h-[280px] w-full">{children}</div>
+      <CardContent className="min-w-0">
+        <div className="h-[240px] w-full min-w-0 sm:h-[280px]">{children}</div>
       </CardContent>
     </Card>
   );
@@ -209,7 +209,7 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <PageHeader title="لوحة التحكم" />
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardContent className="p-5 text-center">
             <div className="text-sm text-muted-foreground">عدد الوحدات</div>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
         <Card>
           <CardContent className="p-5 text-center">
             <div className="text-sm text-muted-foreground">الصيانة الشهرية</div>
-            <div className="text-2xl font-bold">{(stats.monthlyMaintenance ?? 0).toLocaleString()} ج.م</div>
+            <div className="text-2xl font-bold break-words">{(stats.monthlyMaintenance ?? 0).toLocaleString()} ج.م</div>
           </CardContent>
         </Card>
         <Card>
@@ -231,7 +231,7 @@ export default function DashboardPage() {
         <Card>
           <CardContent className="p-5 text-center">
             <div className="text-sm text-muted-foreground">إجمالي المستحقات</div>
-            <div className="text-2xl font-bold">{stats.totalOutstanding.toLocaleString()} ج.م</div>
+            <div className="text-2xl font-bold break-words">{stats.totalOutstanding.toLocaleString()} ج.م</div>
           </CardContent>
         </Card>
       </div>

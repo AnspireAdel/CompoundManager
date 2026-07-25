@@ -42,7 +42,7 @@ export default function RegisterScreen() {
       const result = await api.register({
         ...rest,
         floorNo: selectedType?.hasFloor ? Number(form.floorNo) : 0,
-        apartmentNo: selectedType?.hasApartment ? Number(form.apartmentNo) : 0,
+        apartmentNo: selectedType?.hasApartment ? String(form.apartmentNo).trim() : '0',
         unitTypeId: Number(form.unitTypeId),
       });
       Alert.alert('تم', result.message, [{ text: 'حسناً', onPress: () => router.replace('/login') }]);
@@ -149,12 +149,12 @@ export default function RegisterScreen() {
 
           {selectedType?.hasApartment !== false && (
             <View>
-              <Text style={styles.label}>الشقة</Text>
+              <Text style={styles.label}>رقم الوحدة</Text>
               <TextInput
                 style={styles.input}
                 value={form.apartmentNo}
                 onChangeText={(v) => setForm({ ...form, apartmentNo: v })}
-                keyboardType="number-pad"
+                placeholder="مثال: 12 أو A1"
                 textAlign="right"
               />
             </View>

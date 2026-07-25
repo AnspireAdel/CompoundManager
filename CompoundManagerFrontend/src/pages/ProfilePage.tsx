@@ -260,7 +260,7 @@ export default function ProfilePage() {
 
   const unitType = resident?.unitType;
   const showFloor = unitType ? unitType.hasFloor : resident?.floorNo != null && resident.floorNo !== 0;
-  const showApartment = unitType ? unitType.hasApartment : resident?.apartmentNo != null && resident.apartmentNo !== 0;
+  const showApartment = unitType ? unitType.hasApartment : resident?.apartmentNo != null && resident.apartmentNo !== '' && resident.apartmentNo !== '0';
 
   return (
     <div className="space-y-4">
@@ -316,7 +316,7 @@ export default function ProfilePage() {
                   </FormField>
                 )}
                 {showApartment && (
-                  <FormField label="الشقة">
+                  <FormField label="رقم الوحدة">
                     <Input value={displayValue(resident.apartmentNo)} readOnly disabled />
                   </FormField>
                 )}

@@ -1,7 +1,8 @@
+import 'dotenv/config';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../src/lib/createPrismaClient';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   const superAdminPassword = await bcrypt.hash('superadmin123', 10);
@@ -79,10 +80,10 @@ async function main() {
   const villaType = await prisma.unitType.findUnique({ where: { name: 'فيلا' } });
 
   const residents = [
-    { area: 'A', buildingNo: '01', floorNo: 1, apartmentNo: 1, residentName: 'أحمد محمد', mobile: '01012345678', email: 'ahmed@example.com', monthlyFees: 500, unitTypeId: apartmentType?.id },
-    { area: 'A', buildingNo: '01', floorNo: 1, apartmentNo: 2, residentName: 'فاطمة علي', mobile: '01098765432', email: 'fatma@example.com', monthlyFees: 500, unitTypeId: apartmentType?.id },
-    { area: 'A', buildingNo: '02', floorNo: 2, apartmentNo: 5, residentName: 'محمود حسن', mobile: '01122334455', email: 'mahmoud@example.com', monthlyFees: 1200, unitTypeId: villaType?.id },
-    { area: 'B', buildingNo: '01', floorNo: 3, apartmentNo: 10, residentName: 'سارة إبراهيم', mobile: '01234567890', email: 'sara@example.com', monthlyFees: 500, unitTypeId: apartmentType?.id },
+    { area: 'A', buildingNo: '01', floorNo: 1, apartmentNo: '1', residentName: 'أحمد محمد', mobile: '01012345678', email: 'ahmed@example.com', monthlyFees: 500, unitTypeId: apartmentType?.id },
+    { area: 'A', buildingNo: '01', floorNo: 1, apartmentNo: '2', residentName: 'فاطمة علي', mobile: '01098765432', email: 'fatma@example.com', monthlyFees: 500, unitTypeId: apartmentType?.id },
+    { area: 'A', buildingNo: '02', floorNo: 2, apartmentNo: '5', residentName: 'محمود حسن', mobile: '01122334455', email: 'mahmoud@example.com', monthlyFees: 1200, unitTypeId: villaType?.id },
+    { area: 'B', buildingNo: '01', floorNo: 3, apartmentNo: '10', residentName: 'سارة إبراهيم', mobile: '01234567890', email: 'sara@example.com', monthlyFees: 500, unitTypeId: apartmentType?.id },
   ];
 
   for (const r of residents) {

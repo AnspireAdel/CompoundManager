@@ -18,7 +18,7 @@ const residentSchema = z.object({
   area: z.string().max(3),
   buildingNo: z.string().max(3),
   floorNo: z.number().int().min(0).max(99).optional(),
-  apartmentNo: z.number().int().min(0).max(99).optional(),
+  apartmentNo: z.union([z.string(), z.number()]).transform((v) => String(v).trim()).optional(),
   residentType: z.enum(['O', 'T']).default('O'),
   residentName: z.string().max(60),
   nationality: z.string().max(30).default('مصري'),
@@ -175,7 +175,7 @@ router.post('/', authorize(...STAFF_ROLES), async (req, res) => {
   if (!unitType) return res.status(400).json({ error: 'نوع الوحدة غير صالح' });
 
   let floorNo: number;
-  let apartmentNo: number;
+  let apartmentNo: string;
   try {
     ({ floorNo, apartmentNo } = resolveUnitNumbers(unitType, data.floorNo, data.apartmentNo));
   } catch (err) {
@@ -295,7 +295,7 @@ router.put('/:id', authorize(...STAFF_ROLES), async (req, res) => {
       const unitLabel = [
         `${clash.area}-${clash.buildingNo}`,
         clash.floorNo ? `دور ${clash.floorNo}` : null,
-        clash.apartmentNo ? `شقة ${clash.apartmentNo}` : null,
+        clash.apartmentNo && clash.apartmentNo !== '0' ? `وحدة ${clash.apartmentNo}` : null,
       ]
         .filter(Boolean)
         .join(' / ');

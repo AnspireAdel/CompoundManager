@@ -64,7 +64,7 @@ const pendingUpdateSchema = z.object({
   area: z.string().max(3).optional(),
   buildingNo: z.string().max(3).optional(),
   floorNo: z.number().int().min(0).max(99).optional(),
-  apartmentNo: z.number().int().min(0).max(99).optional(),
+  apartmentNo: z.union([z.string(), z.number()]).transform((v) => String(v).trim()).optional(),
   residentType: z.enum(['O', 'T']).optional(),
   monthlyFees: z.number().min(0).optional(),
   unitTypeId: z.number().int().positive().optional(),

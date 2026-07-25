@@ -23,7 +23,7 @@ function OwnerDetails({ bill }: { bill: Bill }) {
     r.area ? `المجاورة ${r.area}` : null,
     r.buildingNo ? `القطعة ${r.buildingNo}` : null,
     r.floorNo != null ? `دور ${r.floorNo}` : null,
-    r.apartmentNo != null ? `شقة ${r.apartmentNo}` : null,
+    r.apartmentNo != null && r.apartmentNo !== '0' ? `وحدة ${r.apartmentNo}` : null,
   ].filter(Boolean);
 
   return (

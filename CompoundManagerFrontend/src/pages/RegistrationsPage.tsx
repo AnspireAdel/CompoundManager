@@ -25,7 +25,7 @@ type EditForm = {
   area: string;
   buildingNo: string;
   floorNo: number;
-  apartmentNo: number;
+  apartmentNo: string;
   residentType: 'O' | 'T';
   monthlyFees: number;
   unitTypeId: string | number;
@@ -61,7 +61,7 @@ export default function RegistrationsPage() {
       area: r?.area || '',
       buildingNo: r?.buildingNo || '',
       floorNo: r?.floorNo ?? 1,
-      apartmentNo: r?.apartmentNo ?? 1,
+      apartmentNo: r?.apartmentNo != null ? String(r.apartmentNo) : '1',
       residentType: r?.residentType === 'T' ? 'T' : 'O',
       monthlyFees: r?.monthlyFees ?? 0,
       unitTypeId: r?.unitTypeId || '',
@@ -77,7 +77,7 @@ export default function RegistrationsPage() {
       unitTypeId,
       monthlyFees: type ? type.monthlyFees : form.monthlyFees,
       floorNo: type && !type.hasFloor ? 0 : form.floorNo || 1,
-      apartmentNo: type && !type.hasApartment ? 0 : form.apartmentNo || 1,
+      apartmentNo: type && !type.hasApartment ? '0' : form.apartmentNo || '1',
     });
   }
 
@@ -97,7 +97,7 @@ export default function RegistrationsPage() {
       await api.updatePendingRegistration(editing.id, {
         ...form,
         floorNo: selectedEditType?.hasFloor ? Number(form.floorNo) : 0,
-        apartmentNo: selectedEditType?.hasApartment ? Number(form.apartmentNo) : 0,
+        apartmentNo: selectedEditType?.hasApartment ? String(form.apartmentNo).trim() : '0',
         monthlyFees: Number(form.monthlyFees),
         unitTypeId: form.unitTypeId ? Number(form.unitTypeId) : undefined,
         landLine: form.landLine || null,
@@ -219,11 +219,11 @@ export default function RegistrationsPage() {
                   </FormField>
                 )}
                 {selectedEditType?.hasApartment !== false && (
-                  <FormField label="الشقة">
+                  <FormField label="رقم الوحدة">
                     <Input
-                      type="number"
                       value={form.apartmentNo}
-                      onChange={(e) => setForm({ ...form, apartmentNo: +e.target.value })}
+                      onChange={(e) => setForm({ ...form, apartmentNo: e.target.value })}
+                      placeholder="مثال: 12 أو A1"
                       required
                     />
                   </FormField>

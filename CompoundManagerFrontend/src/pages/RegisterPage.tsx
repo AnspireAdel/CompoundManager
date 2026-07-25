@@ -25,7 +25,7 @@ export default function RegisterPage() {
     area: '',
     buildingNo: '',
     floorNo: 1,
-    apartmentNo: 1,
+    apartmentNo: '1',
     residentType: 'O' as 'O' | 'T',
     unitTypeId: '' as string | number,
   });
@@ -60,7 +60,7 @@ export default function RegisterPage() {
       const result = await api.register({
         ...payload,
         floorNo: selectedType?.hasFloor ? Number(form.floorNo) : 0,
-        apartmentNo: selectedType?.hasApartment ? Number(form.apartmentNo) : 0,
+        apartmentNo: selectedType?.hasApartment ? String(form.apartmentNo).trim() : '0',
         unitTypeId: Number(form.unitTypeId),
         landLine: form.landLine || undefined,
       });
@@ -212,12 +212,12 @@ export default function RegisterPage() {
               )}
               {selectedType?.hasApartment !== false && (
                 <div className="space-y-2">
-                  <Label htmlFor="apartmentNo">الشقة</Label>
+                  <Label htmlFor="apartmentNo">رقم الوحدة</Label>
                   <Input
                     id="apartmentNo"
-                    type="number"
                     value={form.apartmentNo}
-                    onChange={(e) => setForm({ ...form, apartmentNo: +e.target.value })}
+                    onChange={(e) => setForm({ ...form, apartmentNo: e.target.value })}
+                    placeholder="مثال: 12 أو A1"
                     required
                   />
                 </div>

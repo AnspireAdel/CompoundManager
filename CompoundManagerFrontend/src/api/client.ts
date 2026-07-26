@@ -404,6 +404,12 @@ export const api = {
   createChat: (data: { name: string; description?: string | null; memberIds?: number[] }) =>
     request<ChatGroupDetail>('/chats', { method: 'POST', body: JSON.stringify(data) }),
 
+  reorderChats: (orderedIds: number[]) =>
+    request<{ message: string; orderedIds: number[] }>('/chats/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ orderedIds }),
+    }),
+
   getChat: (id: number) => request<ChatGroupDetail>(`/chats/${id}`),
 
   updateChat: (id: number, data: { name?: string; description?: string | null }) =>

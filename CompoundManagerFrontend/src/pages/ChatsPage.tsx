@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import {
   Mic,
   Paperclip,
@@ -9,6 +9,7 @@ import {
   Trash2,
   LogOut,
   Plus,
+  GripVertical,
 } from 'lucide-react';
 import { api } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
@@ -103,6 +104,8 @@ export default function ChatsPage() {
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const dragIdRef = useRef<number | null>(null);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
@@ -446,6 +449,51 @@ export default function ChatsPage() {
     }
   }
 
+  async function persistGroupOrder(next: ChatGroupSummary[]) {
+    const orderedIds = next.map((g) => g.id);
+    try {
+      await api.reorderChats(orderedIds);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'فشل حفظ الترتيب');
+      await loadGroups();
+    }
+  }
+
+  function onGroupDragStart(id: number) {
+    if (!isSuperAdmin) return;
+    dragIdRef.current = id;
+  }
+
+  function onGroupDragOver(e: DragEvent, overId: number) {
+    if (!isSuperAdmin || dragIdRef.current == null) return;
+    e.preventDefault();
+    setDragOverId(overId);
+  }
+
+  function onGroupDrop(overId: number) {
+    if (!isSuperAdmin) return;
+    const fromId = dragIdRef.current;
+    dragIdRef.current = null;
+    setDragOverId(null);
+    if (fromId == null || fromId === overId) return;
+
+    setGroups((prev) => {
+      const fromIndex = prev.findIndex((g) => g.id === fromId);
+      const toIndex = prev.findIndex((g) => g.id === overId);
+      if (fromIndex < 0 || toIndex < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      void persistGroupOrder(next);
+      return next;
+    });
+  }
+
+  function onGroupDragEnd() {
+    dragIdRef.current = null;
+    setDragOverId(null);
+  }
+
   if (loading) return <EmptyState>جاري التحميل...</EmptyState>;
 
   const memberIds = new Set(detail?.members?.map((m) => m.userId) || []);
@@ -521,49 +569,78 @@ export default function ChatsPage() {
         <Card className="flex min-h-0 flex-col overflow-hidden">
           <CardHeader className="shrink-0 border-b py-3">
             <CardTitle className="text-sm">المجموعات</CardTitle>
+            {isSuperAdmin && groups.length > 1 && (
+              <CardDescription className="text-[11px]">اسحب لإعادة الترتيب</CardDescription>
+            )}
           </CardHeader>
           <CardContent className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2">
             {groups.length === 0 && <EmptyState>لا توجد مجموعات بعد</EmptyState>}
             {groups.map((g) => (
-              <button
+              <div
                 key={g.id}
-                type="button"
-                onClick={() => selectGroup(g.id)}
+                draggable={isSuperAdmin}
+                onDragStart={() => onGroupDragStart(g.id)}
+                onDragOver={(e) => onGroupDragOver(e, g.id)}
+                onDrop={() => onGroupDrop(g.id)}
+                onDragEnd={onGroupDragEnd}
                 className={cn(
-                  'w-full rounded-lg px-3 py-2.5 text-right transition-colors',
-                  selectedId === g.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-muted'
+                  'rounded-lg transition-colors',
+                  dragOverId === g.id && isSuperAdmin && 'ring-2 ring-primary/40'
                 )}
               >
-                <div className="truncate text-sm font-medium">{g.name}</div>
-                <div
+                <button
+                  type="button"
+                  onClick={() => selectGroup(g.id)}
                   className={cn(
-                    'mt-0.5 text-[11px]',
-                    selectedId === g.id ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                    'flex w-full items-start gap-1 rounded-lg px-2 py-2.5 text-right transition-colors',
+                    selectedId === g.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
                   )}
                 >
-                  {g.isMember
-                    ? `${g.membersCount} أعضاء`
-                    : g.myJoinRequest?.status === 'PENDING'
-                      ? 'طلب قيد المراجعة'
-                      : 'متاحة للانضمام'}
-                </div>
-                {!g.isMember && g.canJoin && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={selectedId === g.id ? 'secondary' : 'outline'}
-                    className="mt-2 h-7"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleJoin(g.id);
-                    }}
-                  >
-                    طلب انضمام
-                  </Button>
-                )}
-              </button>
+                  {isSuperAdmin && (
+                    <span
+                      className={cn(
+                        'mt-0.5 shrink-0 cursor-grab active:cursor-grabbing',
+                        selectedId === g.id ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                      )}
+                      title="اسحب للترتيب"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical className="size-3.5" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{g.name}</div>
+                    <div
+                      className={cn(
+                        'mt-0.5 text-[11px]',
+                        selectedId === g.id ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                      )}
+                    >
+                      {g.isMember
+                        ? `${g.membersCount} أعضاء`
+                        : g.myJoinRequest?.status === 'PENDING'
+                          ? 'طلب قيد المراجعة'
+                          : 'متاحة للانضمام'}
+                    </div>
+                    {!g.isMember && g.canJoin && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={selectedId === g.id ? 'secondary' : 'outline'}
+                        className="mt-2 h-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleJoin(g.id);
+                        }}
+                      >
+                        طلب انضمام
+                      </Button>
+                    )}
+                  </span>
+                </button>
+              </div>
             ))}
           </CardContent>
         </Card>

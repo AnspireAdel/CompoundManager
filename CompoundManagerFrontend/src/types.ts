@@ -248,6 +248,7 @@ export interface ChatGroupSummary {
   id: number;
   name: string;
   description?: string | null;
+  sortOrder?: number;
   createdBy?: ChatUserRef;
   createdAt: string;
   updatedAt: string;

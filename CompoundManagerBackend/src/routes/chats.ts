@@ -96,7 +96,7 @@ router.get('/', async (req, res) => {
         select: { id: true, status: true, createdAt: true },
       },
     },
-    orderBy: { updatedAt: 'desc' },
+    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
   });
 
   const result = groups.map((g) => {
@@ -106,6 +106,7 @@ router.get('/', async (req, res) => {
       id: g.id,
       name: g.name,
       description: g.description,
+      sortOrder: g.sortOrder,
       createdBy: g.createdBy,
       createdAt: g.createdAt,
       updatedAt: g.updatedAt,
@@ -149,10 +150,14 @@ router.post('/', authorize('SUPERADMIN'), async (req, res) => {
   });
   const validIds = users.map((u) => u.id);
 
+  const maxOrder = await prisma.chatGroup.aggregate({ _max: { sortOrder: true } });
+  const nextOrder = (maxOrder._max.sortOrder ?? -1) + 1;
+
   const group = await prisma.chatGroup.create({
     data: {
       name: name.trim(),
       description: description?.trim() || null,
+      sortOrder: nextOrder,
       createdById: req.user!.id,
       members: {
         create: validIds.map((userId) => ({ userId })),
@@ -179,6 +184,34 @@ router.post('/', authorize('SUPERADMIN'), async (req, res) => {
   });
 
   res.status(201).json(refreshed);
+});
+
+const reorderSchema = z.object({
+  orderedIds: z.array(z.number().int().positive()).min(1),
+});
+
+/** Superadmin drag-and-drop order — applies for all users. */
+router.put('/reorder', authorize('SUPERADMIN'), async (req, res) => {
+  const parsed = reorderSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const { orderedIds } = parsed.data;
+  const existing = await prisma.chatGroup.findMany({ select: { id: true } });
+  const existingIds = new Set(existing.map((g) => g.id));
+  if (orderedIds.length !== existingIds.size || orderedIds.some((id) => !existingIds.has(id))) {
+    return res.status(400).json({ error: 'قائمة الترتيب غير مكتملة أو غير صالحة' });
+  }
+
+  await prisma.$transaction(
+    orderedIds.map((id, index) =>
+      prisma.chatGroup.update({
+        where: { id },
+        data: { sortOrder: index },
+      })
+    )
+  );
+
+  res.json({ message: 'تم حفظ الترتيب', orderedIds });
 });
 
 router.get('/:id', async (req, res) => {

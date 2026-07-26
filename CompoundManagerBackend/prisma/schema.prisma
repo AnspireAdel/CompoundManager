@@ -351,6 +351,7 @@ model ChatGroup {
   id          Int      @id @default(autoincrement())
   name        String
   description String?
+  sortOrder   Int      @default(0) @map("SORT_ORDER")
   createdById Int      @map("CREATED_BY_ID")
   createdAt   DateTime @default(now()) @map("CREATED_AT")
   updatedAt   DateTime @updatedAt @map("UPDATED_AT")

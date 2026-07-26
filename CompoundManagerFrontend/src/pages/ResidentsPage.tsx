@@ -427,7 +427,8 @@ export default function ResidentsPage() {
                             <TableCell>{d.relation}</TableCell>
                             <TableCell>{d.mobile}</TableCell>
                             <TableCell>{d.email || '—'}</TableCell>
-                            <TableCell className="space-x-2 space-x-reverse">
+                            <TableCell>
+                              <div className="flex flex-wrap items-center gap-2">
                               <Button
                                 type="button"
                                 variant="outline"
@@ -444,6 +445,7 @@ export default function ResidentsPage() {
                               >
                                 حذف
                               </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}

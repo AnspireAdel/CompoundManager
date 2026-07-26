@@ -516,7 +516,7 @@ export default function ChatsPage() {
         </Card>
       )}
 
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[156px_minmax(0,1fr)]">
         {/* Groups list */}
         <Card className="flex min-h-0 flex-col overflow-hidden">
           <CardHeader className="shrink-0 border-b py-3">
@@ -777,7 +777,7 @@ export default function ChatsPage() {
                     aria-label="إغلاق الأعضاء"
                     onClick={() => setShowMembers(false)}
                   />
-                  <aside className="absolute inset-y-0 start-0 z-20 flex w-[min(100%,320px)] flex-col border-e bg-background shadow-xl">
+                  <aside className="absolute inset-y-0 start-0 z-20 flex w-[min(100%,208px)] flex-col border-e bg-background shadow-xl">
                     <div className="flex items-center justify-between border-b px-3 py-2.5">
                       <div className="text-sm font-semibold">
                         الأعضاء ({detail.members?.length || 0})

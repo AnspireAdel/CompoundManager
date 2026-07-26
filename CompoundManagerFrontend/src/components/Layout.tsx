@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Bell,
   Building2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   CreditCard,
   FileText,
@@ -35,6 +37,8 @@ type NavItem = {
   show?: boolean;
 };
 
+const SIDEBAR_COLLAPSED_KEY = 'cm-sidebar-collapsed';
+
 function roleLabel(role?: string) {
   if (role === 'SUPERADMIN') return 'مدير أعلى';
   if (role === 'ADMIN') return 'مدير';
@@ -47,6 +51,13 @@ export default function Layout() {
   const { user, logout, isAdmin, isAccountant, isOwner } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     setMobileOpen(false);
@@ -60,6 +71,14 @@ export default function Layout() {
       document.body.style.overflow = prev;
     };
   }, [mobileOpen]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [collapsed]);
 
   const items: NavItem[] = [
     { to: '/', label: 'الرئيسية', icon: Home, end: true, show: true },
@@ -85,54 +104,92 @@ export default function Layout() {
     { to: '/expense-types', label: 'أنواع المصاريف', icon: Tags, show: isAdmin || isAccountant },
   ];
 
-  const navLinks = (
-    <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-      {items
-        .filter((item) => item.show)
-        .map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/75 transition-colors hover:bg-[var(--sidebar-accent)] hover:text-white',
-                isActive && 'bg-[var(--sidebar-accent)] text-white'
-              )
-            }
-          >
-            <item.icon className="size-4 shrink-0" />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
-    </nav>
-  );
+  function renderNav(compact: boolean) {
+    return (
+      <nav className={cn('flex-1 space-y-1 overflow-y-auto', compact ? 'p-2' : 'p-3')}>
+        {items
+          .filter((item) => item.show)
+          .map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              title={compact ? item.label : undefined}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center rounded-lg text-sm text-white/75 transition-colors hover:bg-[var(--sidebar-accent)] hover:text-white',
+                  compact ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5',
+                  isActive && 'bg-[var(--sidebar-accent)] text-white'
+                )
+              }
+            >
+              <item.icon className="size-4 shrink-0" />
+              {!compact && <span className="truncate">{item.label}</span>}
+            </NavLink>
+          ))}
+      </nav>
+    );
+  }
 
-  const sidebarFooter = (
-    <div className="border-t border-[var(--sidebar-border)] p-4">
-      <div className="mb-1 text-sm font-medium">{user?.name}</div>
-      <div className="mb-3 text-xs text-white/60">{roleLabel(user?.role)}</div>
-      <Separator className="mb-3 bg-white/10" />
-      <Button
-        variant="outline"
-        className="w-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-        onClick={logout}
-      >
-        <LogOut className="size-4" />
-        تسجيل الخروج
-      </Button>
-    </div>
-  );
+  function renderFooter(compact: boolean) {
+    return (
+      <div className={cn('border-t border-[var(--sidebar-border)]', compact ? 'p-2' : 'p-4')}>
+        {!compact && (
+          <>
+            <div className="mb-1 truncate text-sm font-medium">{user?.name}</div>
+            <div className="mb-3 text-xs text-white/60">{roleLabel(user?.role)}</div>
+            <Separator className="mb-3 bg-white/10" />
+          </>
+        )}
+        <Button
+          variant="outline"
+          title="تسجيل الخروج"
+          className={cn(
+            'border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white',
+            compact ? 'w-full px-0' : 'w-full'
+          )}
+          onClick={logout}
+        >
+          <LogOut className="size-4" />
+          {!compact && 'تسجيل الخروج'}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col bg-[var(--sidebar)] text-[var(--sidebar-foreground)] lg:flex">
-        <div className="border-b border-[var(--sidebar-border)] px-5 py-5">
-          <h1 className="text-base font-bold leading-snug">إدارة المجمع السكني</h1>
+      <aside
+        className={cn(
+          'relative hidden shrink-0 flex-col bg-[var(--sidebar)] text-[var(--sidebar-foreground)] transition-[width] duration-200 lg:flex',
+          collapsed ? 'w-[4.5rem]' : 'w-64'
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-center border-b border-[var(--sidebar-border)]',
+            collapsed ? 'justify-center px-2 py-4' : 'justify-between gap-2 px-4 py-4'
+          )}
+        >
+          {!collapsed && (
+            <h1 className="min-w-0 flex-1 text-sm font-bold leading-snug">إدارة المجمع السكني</h1>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 text-white/80 hover:bg-white/10 hover:text-white"
+            aria-label={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
+            title={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
+            onClick={() => setCollapsed((v) => !v)}
+          >
+            {/* RTL: open = show right chevron to expand toward content, etc. */}
+            {collapsed ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
+          </Button>
         </div>
-        {navLinks}
-        {sidebarFooter}
+        {renderNav(collapsed)}
+        {renderFooter(collapsed)}
       </aside>
 
       {/* Mobile drawer */}
@@ -157,8 +214,8 @@ export default function Layout() {
                 <X className="size-5" />
               </Button>
             </div>
-            {navLinks}
-            {sidebarFooter}
+            {renderNav(false)}
+            {renderFooter(false)}
           </aside>
         </div>
       )}

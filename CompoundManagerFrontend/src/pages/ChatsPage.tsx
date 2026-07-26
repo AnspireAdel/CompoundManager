@@ -881,17 +881,11 @@ export default function ChatsPage() {
                           >
                             <div className="min-w-0">
                               <div className="truncate text-sm font-medium">{m.user.name}</div>
-                              {unit && (
-                                <div className="mt-0.5 text-xs text-muted-foreground">
-                                  {unit}
+                              {(unit || phone) ? (
+                                <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                                  {[unit, phone].filter(Boolean).join(' - ')}
                                 </div>
-                              )}
-                              {phone && (
-                                <div className="mt-0.5 text-xs text-muted-foreground" dir="ltr">
-                                  {phone}
-                                </div>
-                              )}
-                              {!unit && !phone && (
+                              ) : (
                                 <div className="mt-0.5 text-xs text-muted-foreground">—</div>
                               )}
                             </div>

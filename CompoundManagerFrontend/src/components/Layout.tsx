@@ -3,8 +3,6 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Bell,
   Building2,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   CreditCard,
   FileText,
@@ -14,6 +12,8 @@ import {
   Menu,
   MessageCircle,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Receipt,
   Send,
   Settings2,
@@ -58,6 +58,12 @@ export default function Layout() {
       return false;
     }
   });
+  const [hoverTip, setHoverTip] = useState<{
+    label: string;
+    x: number;
+    y: number;
+    side: 'left' | 'right';
+  } | null>(null);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -78,6 +84,7 @@ export default function Layout() {
     } catch {
       /* ignore */
     }
+    if (!collapsed) setHoverTip(null);
   }, [collapsed]);
 
   const items: NavItem[] = [
@@ -114,7 +121,18 @@ export default function Layout() {
               key={item.to}
               to={item.to}
               end={item.end}
-              title={compact ? item.label : undefined}
+              aria-label={item.label}
+              onMouseEnter={(e) => {
+                if (!compact) return;
+                const r = e.currentTarget.getBoundingClientRect();
+                setHoverTip({
+                  label: item.label,
+                  x: r.left + r.width / 2,
+                  y: r.top + r.height / 2,
+                  side: r.left > window.innerWidth / 2 ? 'left' : 'right',
+                });
+              }}
+              onMouseLeave={() => setHoverTip(null)}
               className={({ isActive }) =>
                 cn(
                   'flex items-center rounded-lg text-sm text-white/75 transition-colors hover:bg-[var(--sidebar-accent)] hover:text-white',
@@ -124,7 +142,7 @@ export default function Layout() {
               }
             >
               <item.icon className="size-4 shrink-0" />
-              {!compact && <span className="truncate">{item.label}</span>}
+              {!compact && <span>{item.label}</span>}
             </NavLink>
           ))}
       </nav>
@@ -143,10 +161,21 @@ export default function Layout() {
         )}
         <Button
           variant="outline"
-          title="تسجيل الخروج"
+          aria-label="تسجيل الخروج"
+          onMouseEnter={(e) => {
+            if (!compact) return;
+            const r = e.currentTarget.getBoundingClientRect();
+            setHoverTip({
+              label: 'تسجيل الخروج',
+              x: r.left + r.width / 2,
+              y: r.top + r.height / 2,
+              side: r.left > window.innerWidth / 2 ? 'left' : 'right',
+            });
+          }}
+          onMouseLeave={() => setHoverTip(null)}
           className={cn(
             'border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white',
-            compact ? 'w-full px-0' : 'w-full'
+            compact ? 'size-10 p-0' : 'w-full'
           )}
           onClick={logout}
         >
@@ -162,14 +191,14 @@ export default function Layout() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'relative hidden shrink-0 flex-col bg-[var(--sidebar)] text-[var(--sidebar-foreground)] transition-[width] duration-200 lg:flex',
-          collapsed ? 'w-[4.5rem]' : 'w-64'
+          'hidden shrink-0 flex-col bg-[var(--sidebar)] text-[var(--sidebar-foreground)] transition-[width] duration-200 lg:flex',
+          collapsed ? 'w-[4.25rem]' : 'w-64'
         )}
       >
         <div
           className={cn(
             'flex items-center border-b border-[var(--sidebar-border)]',
-            collapsed ? 'justify-center px-2 py-4' : 'justify-between gap-2 px-4 py-4'
+            collapsed ? 'justify-center px-2 py-3' : 'justify-between gap-2 px-3 py-4'
           )}
         >
           {!collapsed && (
@@ -179,13 +208,12 @@ export default function Layout() {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8 shrink-0 text-white/80 hover:bg-white/10 hover:text-white"
+            className="size-9 shrink-0 text-white hover:bg-white/10 hover:text-white"
             aria-label={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
             title={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
             onClick={() => setCollapsed((v) => !v)}
           >
-            {/* RTL: open = show right chevron to expand toward content, etc. */}
-            {collapsed ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
+            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
           </Button>
         </div>
         {renderNav(collapsed)}
@@ -221,15 +249,27 @@ export default function Layout() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur">
           <Button
             type="button"
             variant="outline"
             size="icon"
+            className="lg:hidden"
             aria-label="فتح القائمة"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="size-5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="hidden lg:inline-flex"
+            aria-label={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
+            title={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
+            onClick={() => setCollapsed((v) => !v)}
+          >
+            {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
           </Button>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">إدارة المجمع السكني</div>
@@ -241,6 +281,23 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {hoverTip && collapsed && (
+        <div
+          role="tooltip"
+          className="pointer-events-none fixed z-[100] whitespace-nowrap rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background shadow-lg"
+          style={{
+            top: hoverTip.y,
+            left: hoverTip.side === 'left' ? hoverTip.x - 12 : hoverTip.x + 12,
+            transform:
+              hoverTip.side === 'left'
+                ? 'translate(-100%, -50%)'
+                : 'translate(0, -50%)',
+          }}
+        >
+          {hoverTip.label}
+        </div>
+      )}
     </div>
   );
 }

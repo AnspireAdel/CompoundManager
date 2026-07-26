@@ -898,12 +898,14 @@ export default function ChatsPage() {
                             {isSuperAdmin && m.userId !== user?.id && (
                               <Button
                                 type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-7 shrink-0"
+                                size="icon"
+                                variant="ghost"
+                                className="size-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                title="إزالة"
+                                aria-label="إزالة العضو"
                                 onClick={() => handleRemoveMember(m.userId)}
                               >
-                                إزالة
+                                <Trash2 className="size-4" />
                               </Button>
                             )}
                           </div>

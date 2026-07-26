@@ -45,7 +45,24 @@ const addMembersSchema = z.object({
   userIds: z.array(z.number().int().positive()).min(1),
 });
 
-const userSelect = { id: true, name: true, email: true, role: true };
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  resident: {
+    select: {
+      area: true,
+      buildingNo: true,
+      mobile: true,
+    },
+  },
+  dependent: {
+    select: {
+      mobile: true,
+    },
+  },
+};
 
 async function isMember(chatGroupId: number, userId: number) {
   const m = await prisma.chatMember.findUnique({

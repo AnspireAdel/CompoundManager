@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma';
 import { authenticate, signToken } from '../middleware/auth';
 import { createNotification } from '../services/notificationService';
 import { resolveUnitNumbers } from '../lib/unitFields';
+import { normalizePassword, tryNormalizePassword } from '../lib/password';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ const registerSchema = z.object({
   landLine: z.string().max(30).optional(),
   nationality: z.string().max(30).optional(),
   area: z.string().max(3),
-  buildingNo: z.string().max(3),
+  buildingNo: z.string().max(5),
   floorNo: z.number().int().min(0).max(99).optional(),
   apartmentNo: z.union([z.string(), z.number()]).transform((v) => String(v).trim()).optional(),
   residentType: z.enum(['O', 'T']),
@@ -78,7 +79,9 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: err instanceof Error ? err.message : 'بيانات الوحدة غير مكتملة' });
   }
 
-  const hashed = await bcrypt.hash(data.password, 10);
+  const pw = tryNormalizePassword(data.password);
+  if (!pw.ok) return res.status(400).json({ error: pw.error });
+  const hashed = await bcrypt.hash(pw.value, 10);
 
   const existingUnit = await prisma.resident.findUnique({
     where: {
@@ -169,7 +172,27 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
   }
 
-  const valid = await bcrypt.compare(password, user.password);
+  const pw = tryNormalizePassword(password);
+  if (!pw.ok) {
+    return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
+  }
+
+  let valid = await bcrypt.compare(pw.value, user.password);
+  if (!valid) {
+    // Migrate legacy hashes (mixed case / pre-normalization) on successful login
+    const legacyCandidates = Array.from(
+      new Set([password, password.toLowerCase(), password.toUpperCase()].filter((p) => p !== pw.value))
+    );
+    for (const candidate of legacyCandidates) {
+      if (await bcrypt.compare(candidate, user.password)) {
+        valid = true;
+        const newHash = await bcrypt.hash(pw.value, 10);
+        await prisma.user.update({ where: { id: user.id }, data: { password: newHash } });
+        user.password = newHash;
+        break;
+      }
+    }
+  }
   if (!valid) {
     return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
   }
@@ -195,7 +218,10 @@ router.post('/login', async (req, res) => {
   });
 
   // Treat default temp password as requiring a change (covers older accounts)
-  const usingDefaultPassword = await bcrypt.compare(DEFAULT_OWNER_PASSWORD, user.password);
+  const usingDefaultPassword = await bcrypt.compare(
+    normalizePassword(DEFAULT_OWNER_PASSWORD),
+    user.password
+  );
   let mustChangePassword = user.mustChangePassword || usingDefaultPassword;
   if (usingDefaultPassword && !user.mustChangePassword) {
     await prisma.user.update({
@@ -233,7 +259,10 @@ router.get('/me', authenticate, async (req, res) => {
 
   const { password: _, resetToken: __, ...safe } = user;
 
-  const usingDefaultPassword = await bcrypt.compare(DEFAULT_OWNER_PASSWORD, user.password);
+  const usingDefaultPassword = await bcrypt.compare(
+    normalizePassword(DEFAULT_OWNER_PASSWORD),
+    user.password
+  );
   let mustChangePassword = user.mustChangePassword || usingDefaultPassword;
   if (usingDefaultPassword && !user.mustChangePassword) {
     await prisma.user.update({
@@ -322,28 +351,34 @@ router.post('/change-password', authenticate, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  if (parsed.data.newPassword === DEFAULT_OWNER_PASSWORD) {
+  const newPw = tryNormalizePassword(parsed.data.newPassword);
+  if (!newPw.ok) return res.status(400).json({ error: newPw.error });
+  if (newPw.value === normalizePassword(DEFAULT_OWNER_PASSWORD)) {
     return res.status(400).json({ error: 'اختر كلمة مرور مختلفة عن كلمة المرور الافتراضية' });
   }
 
   if (user.mustChangePassword) {
     // First login: current password optional; if sent, must match
     if (parsed.data.currentPassword) {
-      const valid = await bcrypt.compare(parsed.data.currentPassword, user.password);
+      const cur = tryNormalizePassword(parsed.data.currentPassword);
+      if (!cur.ok) return res.status(401).json({ error: 'كلمة المرور الحالية غير صحيحة' });
+      const valid = await bcrypt.compare(cur.value, user.password);
       if (!valid) return res.status(401).json({ error: 'كلمة المرور الحالية غير صحيحة' });
     }
   } else {
     if (!parsed.data.currentPassword) {
       return res.status(400).json({ error: 'كلمة المرور الحالية مطلوبة' });
     }
-    const valid = await bcrypt.compare(parsed.data.currentPassword, user.password);
+    const cur = tryNormalizePassword(parsed.data.currentPassword);
+    if (!cur.ok) return res.status(401).json({ error: 'كلمة المرور الحالية غير صحيحة' });
+    const valid = await bcrypt.compare(cur.value, user.password);
     if (!valid) return res.status(401).json({ error: 'كلمة المرور الحالية غير صحيحة' });
   }
 
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      password: await bcrypt.hash(parsed.data.newPassword, 10),
+      password: await bcrypt.hash(newPw.value, 10),
       mustChangePassword: false,
     },
   });
@@ -398,10 +433,13 @@ router.post('/reset-password', async (req, res) => {
     return res.status(400).json({ error: 'رمز إعادة التعيين غير صالح أو منتهي' });
   }
 
+  const newPw = tryNormalizePassword(parsed.data.newPassword);
+  if (!newPw.ok) return res.status(400).json({ error: newPw.error });
+
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      password: await bcrypt.hash(parsed.data.newPassword, 10),
+      password: await bcrypt.hash(newPw.value, 10),
       resetToken: null,
       resetTokenExpiry: null,
       mustChangePassword: false,

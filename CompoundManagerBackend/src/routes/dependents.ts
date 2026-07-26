@@ -7,6 +7,7 @@ import {
   DEFAULT_TEMP_PASSWORD,
   syncDependentChatsFromOwner,
 } from '../lib/residentAccess';
+import { normalizePassword } from '../lib/password';
 
 const router = Router();
 
@@ -97,7 +98,7 @@ router.post('/', async (req, res) => {
     return res.status(409).json({ error: 'البريد الإلكتروني مستخدم بالفعل' });
   }
 
-  const hashed = await bcrypt.hash(DEFAULT_TEMP_PASSWORD, 10);
+  const hashed = await bcrypt.hash(normalizePassword(DEFAULT_TEMP_PASSWORD), 10);
 
   const dependent = await prisma.$transaction(async (tx) => {
     const dep = await tx.dependent.create({
@@ -191,7 +192,7 @@ router.put('/:id', async (req, res) => {
       },
     });
   } else if (nextEmail) {
-    const hashed = await bcrypt.hash(DEFAULT_TEMP_PASSWORD, 10);
+    const hashed = await bcrypt.hash(normalizePassword(DEFAULT_TEMP_PASSWORD), 10);
     const depUser = await prisma.user.create({
       data: {
         email: nextEmail,
@@ -233,7 +234,7 @@ router.post('/:id/reset-password', async (req, res) => {
     return res.status(400).json({ error: 'لا يوجد بريد إلكتروني لإنشاء حساب دخول' });
   }
 
-  const hashed = await bcrypt.hash(DEFAULT_TEMP_PASSWORD, 10);
+  const hashed = await bcrypt.hash(normalizePassword(DEFAULT_TEMP_PASSWORD), 10);
   const email = (existing.user?.email || existing.email || '').toLowerCase();
 
   if (existing.user) {

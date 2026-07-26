@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { authenticate, authorize, ADMIN_ROLES, STAFF_ROLES, isResidentUser } from '../middleware/auth';
 import { getResidentBalance } from '../services/billService';
 import { resolveUnitNumbers } from '../lib/unitFields';
+import { normalizePassword, tryNormalizePassword } from '../lib/password';
 
 const router = Router();
 
@@ -16,7 +17,7 @@ function withoutNotes<T extends { notes?: string | null }>(resident: T) {
 
 const residentSchema = z.object({
   area: z.string().max(3),
-  buildingNo: z.string().max(3),
+  buildingNo: z.string().max(5),
   floorNo: z.number().int().min(0).max(99).optional(),
   apartmentNo: z.union([z.string(), z.number()]).transform((v) => String(v).trim()).optional(),
   residentType: z.enum(['O', 'T']).default('O'),
@@ -102,7 +103,9 @@ router.put('/me', authorize('OWNER'), async (req, res) => {
     }
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    const valid = await bcrypt.compare(currentPassword, user.password);
+    const cur = tryNormalizePassword(currentPassword);
+    if (!cur.ok) return res.status(401).json({ error: 'Current password is incorrect' });
+    const valid = await bcrypt.compare(cur.value, user.password);
     if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
   }
 
@@ -127,7 +130,11 @@ router.put('/me', authorize('OWNER'), async (req, res) => {
   const userData: Record<string, unknown> = {};
   if (residentName) userData.name = residentName;
   if (email) userData.email = email;
-  if (password) userData.password = await bcrypt.hash(password, 10);
+  if (password) {
+    const pw = tryNormalizePassword(password);
+    if (!pw.ok) return res.status(400).json({ error: pw.error });
+    userData.password = await bcrypt.hash(pw.value, 10);
+  }
 
   if (Object.keys(userData).length > 0) {
     await prisma.user.update({ where: { id: req.user.id }, data: userData });
@@ -196,7 +203,9 @@ router.post('/', authorize(...STAFF_ROLES), async (req, res) => {
   });
 
   if (data.email) {
-    const hashed = await bcrypt.hash(password || '123', 10);
+    const plain = password ? tryNormalizePassword(password) : { ok: true as const, value: normalizePassword('123') };
+    if (!plain.ok) return res.status(400).json({ error: plain.error });
+    const hashed = await bcrypt.hash(plain.value, 10);
     await prisma.user.create({
       data: {
         email: data.email,
@@ -327,7 +336,7 @@ router.put('/:id', authorize(...STAFF_ROLES), async (req, res) => {
       await prisma.user.update({ where: { id: linkedUser.id }, data: userData });
     }
   } else if (data.email) {
-    const hashed = await bcrypt.hash('123', 10);
+    const hashed = await bcrypt.hash(normalizePassword('123'), 10);
     await prisma.user.create({
       data: {
         email: data.email,
@@ -355,7 +364,7 @@ router.post('/:id/reset-password', authorize(...STAFF_ROLES), async (req, res) =
   });
   if (!resident) return res.status(404).json({ error: 'Resident not found' });
 
-  const hashed = await bcrypt.hash(DEFAULT_OWNER_PASSWORD, 10);
+  const hashed = await bcrypt.hash(normalizePassword(DEFAULT_OWNER_PASSWORD), 10);
   const ownerUser = resident.users[0];
 
   if (ownerUser) {

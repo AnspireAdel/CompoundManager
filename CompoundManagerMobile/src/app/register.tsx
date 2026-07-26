@@ -128,6 +128,7 @@ export default function RegisterScreen() {
                   onChangeText={(v) => setForm({ ...form, [key]: v })}
                   keyboardType={key === 'email' ? 'email-address' : 'default'}
                   autoCapitalize="none"
+                  maxLength={key === 'buildingNo' ? 5 : key === 'area' ? 3 : undefined}
                   textAlign="right"
                 />
               )}

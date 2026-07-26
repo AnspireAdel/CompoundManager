@@ -194,7 +194,7 @@ export default function RegisterPage() {
                   id="buildingNo"
                   value={form.buildingNo}
                   onChange={(e) => setForm({ ...form, buildingNo: e.target.value })}
-                  maxLength={3}
+                  maxLength={5}
                   required
                 />
               </div>

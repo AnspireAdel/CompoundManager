@@ -195,6 +195,8 @@ export interface DashboardStats {
     month: number;
     monthKey: string;
     label: string;
+    issuedCount: number;
+    collectedCount: number;
     issued: number;
     collected: number;
     remaining: number;
@@ -202,6 +204,8 @@ export interface DashboardStats {
     net: number;
   }>;
   yearlyTotals?: {
+    issuedCount: number;
+    collectedCount: number;
     issued: number;
     collected: number;
     remaining: number;
@@ -221,6 +225,14 @@ export interface ChatUserRef {
   name: string;
   email: string;
   role: Role;
+  resident?: {
+    area?: string;
+    buildingNo?: string;
+    mobile?: string;
+  } | null;
+  dependent?: {
+    mobile?: string;
+  } | null;
 }
 
 export interface ChatJoinRequest {

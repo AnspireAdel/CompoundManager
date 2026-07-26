@@ -5,6 +5,7 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { createPrismaClient } from '../src/lib/createPrismaClient';
+import { normalizePassword } from '../src/lib/password';
 
 const prisma = createPrismaClient();
 
@@ -34,10 +35,10 @@ async function main() {
   await wipe();
 
   const [saHash, adminHash, accHash, ownerHash] = await Promise.all([
-    bcrypt.hash('sa123', 10),
-    bcrypt.hash('admin123', 10),
-    bcrypt.hash('acc123', 10),
-    bcrypt.hash('123456', 10),
+    bcrypt.hash(normalizePassword('sa123'), 10),
+    bcrypt.hash(normalizePassword('admin123'), 10),
+    bcrypt.hash(normalizePassword('acc123'), 10),
+    bcrypt.hash(normalizePassword('123456'), 10),
   ]);
 
   await prisma.user.create({

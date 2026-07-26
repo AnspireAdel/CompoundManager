@@ -295,6 +295,8 @@ export default function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>الشهر</TableHead>
+                  <TableHead>عدد المُصدر</TableHead>
+                  <TableHead>عدد المحصّل</TableHead>
                   <TableHead>المُصدره</TableHead>
                   <TableHead>المحصّله</TableHead>
                   <TableHead>المتبقيه</TableHead>
@@ -306,12 +308,14 @@ export default function DashboardPage() {
                 {yearlyRows.map((row) => (
                   <TableRow key={row.monthKey}>
                     <TableCell>{row.label}</TableCell>
-                    <TableCell>{row.issued.toLocaleString()} ج.م</TableCell>
-                    <TableCell>{row.collected.toLocaleString()} ج.م</TableCell>
-                    <TableCell>{row.remaining.toLocaleString()} ج.م</TableCell>
-                    <TableCell>{(row.expenses ?? 0).toLocaleString()} ج.م</TableCell>
+                    <TableCell>{row.issuedCount ?? 0}</TableCell>
+                    <TableCell>{row.collectedCount ?? 0}</TableCell>
+                    <TableCell>{row.issued.toLocaleString()}</TableCell>
+                    <TableCell>{row.collected.toLocaleString()}</TableCell>
+                    <TableCell>{row.remaining.toLocaleString()}</TableCell>
+                    <TableCell>{(row.expenses ?? 0).toLocaleString()}</TableCell>
                     <TableCell className={(row.net ?? 0) < 0 ? 'text-destructive' : undefined}>
-                      {(row.net ?? 0).toLocaleString()} ج.م
+                      {(row.net ?? 0).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -320,12 +324,14 @@ export default function DashboardPage() {
                 <TableFooter>
                   <TableRow>
                     <TableCell>الإجمالي</TableCell>
-                    <TableCell>{yearlyTotals.issued.toLocaleString()} ج.م</TableCell>
-                    <TableCell>{yearlyTotals.collected.toLocaleString()} ج.م</TableCell>
-                    <TableCell>{yearlyTotals.remaining.toLocaleString()} ج.م</TableCell>
-                    <TableCell>{(yearlyTotals.expenses ?? 0).toLocaleString()} ج.م</TableCell>
+                    <TableCell>{yearlyTotals.issuedCount ?? 0}</TableCell>
+                    <TableCell>{yearlyTotals.collectedCount ?? 0}</TableCell>
+                    <TableCell>{yearlyTotals.issued.toLocaleString()}</TableCell>
+                    <TableCell>{yearlyTotals.collected.toLocaleString()}</TableCell>
+                    <TableCell>{yearlyTotals.remaining.toLocaleString()}</TableCell>
+                    <TableCell>{(yearlyTotals.expenses ?? 0).toLocaleString()}</TableCell>
                     <TableCell className={(yearlyTotals.net ?? 0) < 0 ? 'text-destructive' : undefined}>
-                      {(yearlyTotals.net ?? 0).toLocaleString()} ج.م
+                      {(yearlyTotals.net ?? 0).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 </TableFooter>

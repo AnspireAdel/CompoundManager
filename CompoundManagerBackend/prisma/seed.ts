@@ -1,14 +1,15 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { createPrismaClient } from '../src/lib/createPrismaClient';
+import { normalizePassword } from '../src/lib/password';
 
 const prisma = createPrismaClient();
 
 async function main() {
-  const superAdminPassword = await bcrypt.hash('superadmin123', 10);
-  const adminPassword = await bcrypt.hash('admin123', 10);
-  const accountantPassword = await bcrypt.hash('accountant123', 10);
-  const ownerPassword = await bcrypt.hash('123456', 10);
+  const superAdminPassword = await bcrypt.hash(normalizePassword('superadmin123'), 10);
+  const adminPassword = await bcrypt.hash(normalizePassword('admin123'), 10);
+  const accountantPassword = await bcrypt.hash(normalizePassword('accountant123'), 10);
+  const ownerPassword = await bcrypt.hash(normalizePassword('123456'), 10);
 
   await prisma.user.upsert({
     where: { email: 'superadmin@compound.com' },

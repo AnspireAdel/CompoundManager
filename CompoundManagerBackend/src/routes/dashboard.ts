@@ -74,6 +74,8 @@ async function buildYearlyMonthly(year: number) {
     month: number;
     monthKey: string;
     label: string;
+    issuedCount: number;
+    collectedCount: number;
     issued: number;
     collected: number;
     remaining: number;
@@ -87,6 +89,8 @@ async function buildYearlyMonthly(year: number) {
       month: i + 1,
       monthKey: key,
       label: MONTH_NAMES_AR[i],
+      issuedCount: 0,
+      collectedCount: 0,
       issued: 0,
       collected: 0,
       remaining: 0,
@@ -98,12 +102,14 @@ async function buildYearlyMonthly(year: number) {
   for (const b of bills) {
     const m = new Date(b.issuedAt).getMonth();
     const row = rows[m];
+    row.issuedCount += 1;
     row.issued += b.amount;
     row.remaining += Math.max(0, b.amount - (b.paidAmount || 0));
   }
 
   for (const p of payments) {
     const m = new Date(p.trxDate).getMonth();
+    rows[m].collectedCount += 1;
     rows[m].collected += p.trxAmount;
   }
 
@@ -269,13 +275,15 @@ router.get('/stats', async (req, res) => {
   const yearlyMonthly = await buildYearlyMonthly(year);
   const yearlyTotals = yearlyMonthly.reduce(
     (acc, row) => ({
+      issuedCount: acc.issuedCount + row.issuedCount,
+      collectedCount: acc.collectedCount + row.collectedCount,
       issued: acc.issued + row.issued,
       collected: acc.collected + row.collected,
       remaining: acc.remaining + row.remaining,
       expenses: acc.expenses + row.expenses,
       net: acc.net + row.net,
     }),
-    { issued: 0, collected: 0, remaining: 0, expenses: 0, net: 0 }
+    { issuedCount: 0, collectedCount: 0, issued: 0, collected: 0, remaining: 0, expenses: 0, net: 0 }
   );
 
   const overdueBills = await prisma.bill.findMany({

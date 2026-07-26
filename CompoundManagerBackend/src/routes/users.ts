@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { authenticate, authorize, ADMIN_ROLES, STAFF_ROLES } from '../middleware/auth';
 import { createNotification } from '../services/notificationService';
 import { resolveUnitNumbers } from '../lib/unitFields';
+import { tryNormalizePassword } from '../lib/password';
 
 const router = Router();
 
@@ -62,7 +63,7 @@ const pendingUpdateSchema = z.object({
   landLine: z.string().max(30).optional().nullable(),
   nationality: z.string().max(30).optional(),
   area: z.string().max(3).optional(),
-  buildingNo: z.string().max(3).optional(),
+  buildingNo: z.string().max(5).optional(),
   floorNo: z.number().int().min(0).max(99).optional(),
   apartmentNo: z.union([z.string(), z.number()]).transform((v) => String(v).trim()).optional(),
   residentType: z.enum(['O', 'T']).optional(),
@@ -242,7 +243,9 @@ router.post('/', authorize(...ADMIN_ROLES), async (req, res) => {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return res.status(409).json({ error: 'Email already exists' });
 
-  const hashed = await bcrypt.hash(password, 10);
+  const pw = tryNormalizePassword(password);
+  if (!pw.ok) return res.status(400).json({ error: pw.error });
+  const hashed = await bcrypt.hash(pw.value, 10);
   const user = await prisma.user.create({
     data: {
       email,
@@ -265,7 +268,11 @@ router.put('/:id', authorize(...ADMIN_ROLES), async (req, res) => {
   if (role) data.role = role;
   if (status) data.status = status;
   if (residentId !== undefined) data.residentId = residentId;
-  if (password) data.password = await bcrypt.hash(password, 10);
+  if (password) {
+    const pw = tryNormalizePassword(String(password));
+    if (!pw.ok) return res.status(400).json({ error: pw.error });
+    data.password = await bcrypt.hash(pw.value, 10);
+  }
 
   const user = await prisma.user.update({ where: { id }, data });
   const { password: _, resetToken, ...safe } = user;

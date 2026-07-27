@@ -212,6 +212,17 @@ export interface DashboardStats {
     expenses: number;
     net: number;
   };
+  yearlyExpenseBreakdown?: {
+    expenseTypes: Array<{ id: number; name: string }>;
+    rows: Array<{
+      month: number;
+      monthKey: string;
+      label: string;
+      total: number;
+      byType: Record<string, number>;
+    }>;
+    totals: { total: number; byType: Record<string, number> };
+  };
   totalResidents?: number;
   totalBills?: number;
   totalServices?: number;

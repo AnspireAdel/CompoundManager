@@ -341,6 +341,61 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
+          <CardTitle className="text-base">المصروف الشهري</CardTitle>
+          <div className="text-sm text-muted-foreground">سنة {selectedYear}</div>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          {loadingYear ? (
+            <EmptyState>جاري التحميل...</EmptyState>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>الشهر</TableHead>
+                  <TableHead>إجمالي المصروف</TableHead>
+                  {(stats.yearlyExpenseBreakdown?.expenseTypes || []).map((t) => (
+                    <TableHead key={t.id}>{t.name}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(stats.yearlyExpenseBreakdown?.rows || []).map((row) => (
+                  <TableRow key={row.monthKey}>
+                    <TableCell>{row.label}</TableCell>
+                    <TableCell>{row.total.toLocaleString()}</TableCell>
+                    {(stats.yearlyExpenseBreakdown?.expenseTypes || []).map((t) => (
+                      <TableCell key={t.id}>
+                        {(row.byType[String(t.id)] ?? 0).toLocaleString()}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+              {stats.yearlyExpenseBreakdown?.totals && (
+                <TableFooter>
+                  <TableRow>
+                    <TableCell>الإجمالي</TableCell>
+                    <TableCell>
+                      {stats.yearlyExpenseBreakdown.totals.total.toLocaleString()}
+                    </TableCell>
+                    {(stats.yearlyExpenseBreakdown.expenseTypes || []).map((t) => (
+                      <TableCell key={t.id}>
+                        {(stats.yearlyExpenseBreakdown!.totals.byType[String(t.id)] ?? 0).toLocaleString()}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableFooter>
+              )}
+            </Table>
+          )}
+          {!loadingYear && (stats.yearlyExpenseBreakdown?.expenseTypes || []).length === 0 && (
+            <EmptyState>لا توجد أنواع مصاريف بعد</EmptyState>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2">
         <ChartCard title="الإصدار والتحصيل (آخر 6 أشهر)">
           {trendData.every((d) => d.issued === 0 && d.collected === 0) ? (

@@ -134,6 +134,82 @@ async function buildYearlyMonthly(year: number) {
   });
 }
 
+async function buildYearlyExpenseBreakdown(year: number) {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 1);
+
+  const [expenseTypes, expenses] = await Promise.all([
+    prisma.expenseType.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, activeFlag: true },
+    }),
+    prisma.expense.findMany({
+      where: { expenseDate: { gte: start, lt: end } },
+      select: {
+        expenseDate: true,
+        amount: true,
+        expenseTypeId: true,
+        expenseType: { select: { id: true, name: true } },
+      },
+    }),
+  ]);
+
+  const usedTypeIds = new Set(expenses.map((e) => e.expenseTypeId));
+  const columns = expenseTypes
+    .filter((t) => t.activeFlag === 'Y' || usedTypeIds.has(t.id))
+    .map((t) => ({ id: t.id, name: t.name }));
+
+  // Include orphaned types that somehow appear in expenses but not in catalog
+  for (const e of expenses) {
+    if (!columns.some((c) => c.id === e.expenseTypeId) && e.expenseType) {
+      columns.push({ id: e.expenseType.id, name: e.expenseType.name });
+    }
+  }
+  columns.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+
+  const emptyByType = () =>
+    Object.fromEntries(columns.map((c) => [String(c.id), 0])) as Record<string, number>;
+
+  const rows = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    monthKey: `${year}-${String(i + 1).padStart(2, '0')}`,
+    label: MONTH_NAMES_AR[i],
+    total: 0,
+    byType: emptyByType(),
+  }));
+
+  for (const e of expenses) {
+    const m = new Date(e.expenseDate).getMonth();
+    const key = String(e.expenseTypeId);
+    rows[m].total += e.amount;
+    if (rows[m].byType[key] === undefined) rows[m].byType[key] = 0;
+    rows[m].byType[key] += e.amount;
+  }
+
+  const mapped = rows.map((r) => ({
+    ...r,
+    total: Math.round(r.total),
+    byType: Object.fromEntries(
+      Object.entries(r.byType).map(([k, v]) => [k, Math.round(v)])
+    ),
+  }));
+
+  const totalsByType = emptyByType();
+  let totalAll = 0;
+  for (const r of mapped) {
+    totalAll += r.total;
+    for (const [k, v] of Object.entries(r.byType)) {
+      totalsByType[k] = (totalsByType[k] || 0) + v;
+    }
+  }
+
+  return {
+    expenseTypes: columns,
+    rows: mapped,
+    totals: { total: totalAll, byType: totalsByType },
+  };
+}
+
 router.get('/stats', async (req, res) => {
   const now = new Date();
   const requestedYear = Number(req.query.year);
@@ -221,7 +297,7 @@ router.get('/stats', async (req, res) => {
   }
   const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-  const [recentBills, recentPayments, billYears, paymentYears] = await Promise.all([
+  const [recentBills, recentPayments, billYears, paymentYears, expenseYears] = await Promise.all([
     prisma.bill.findMany({
       where: { issuedAt: { gte: rangeStart } },
       select: { issuedAt: true, amount: true },
@@ -239,6 +315,7 @@ router.get('/stats', async (req, res) => {
       where: { trxType: 'PAY', posted: 'Y' },
       select: { trxDate: true },
     }),
+    prisma.expense.findMany({ select: { expenseDate: true } }),
   ]);
 
   const issuedByMonth = new Map<string, number>();
@@ -270,6 +347,7 @@ router.get('/stats', async (req, res) => {
   const yearSet = new Set<number>([now.getFullYear(), year]);
   for (const b of billYears) yearSet.add(new Date(b.issuedAt).getFullYear());
   for (const p of paymentYears) yearSet.add(new Date(p.trxDate).getFullYear());
+  for (const e of expenseYears) yearSet.add(new Date(e.expenseDate).getFullYear());
   const availableYears = Array.from(yearSet).sort((a, b) => b - a);
 
   const yearlyMonthly = await buildYearlyMonthly(year);
@@ -285,6 +363,8 @@ router.get('/stats', async (req, res) => {
     }),
     { issuedCount: 0, collectedCount: 0, issued: 0, collected: 0, remaining: 0, expenses: 0, net: 0 }
   );
+
+  const yearlyExpenseBreakdown = await buildYearlyExpenseBreakdown(year);
 
   const overdueBills = await prisma.bill.findMany({
     where: { status: 'OVERDUE' },
@@ -321,6 +401,7 @@ router.get('/stats', async (req, res) => {
     availableYears,
     yearlyMonthly,
     yearlyTotals,
+    yearlyExpenseBreakdown,
     totalResidents: totalUnits,
     totalServices: 0,
     overdueBills,

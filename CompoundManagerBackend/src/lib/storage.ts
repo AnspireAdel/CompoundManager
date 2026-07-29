@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { put } from '@vercel/blob';
+import { Readable } from 'stream';
+import { get, put } from '@vercel/blob';
+import type { Response } from 'express';
 import { decodeUploadName } from './uploadName';
 
 export type UploadedFile = {
@@ -32,6 +34,14 @@ function ensureLocalDir(folder: string): string {
   return dir;
 }
 
+export function isBlobConfigured(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+export function isPrivateBlobUrl(url?: string | null): boolean {
+  return Boolean(url && url.includes('.private.blob.vercel-storage.com'));
+}
+
 /** Persist an uploaded file to Vercel Blob when configured, otherwise local disk. */
 export async function saveUpload(folder: 'chats' | 'payments', file: MulterFile): Promise<UploadedFile> {
   const originalName = decodeUploadName(file.originalname);
@@ -49,8 +59,9 @@ export async function saveUpload(folder: 'chats' | 'payments', file: MulterFile)
 
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (token) {
+    // Store is private — public access is rejected by Vercel Blob.
     const blob = await put(`${folder}/${storedName}`, buffer, {
-      access: 'public',
+      access: 'private',
       token,
       contentType: mimeType,
       addRandomSuffix: false,
@@ -78,6 +89,30 @@ export async function saveUpload(folder: 'chats' | 'payments', file: MulterFile)
   return { originalName, url: `/uploads/${folder}/${storedName}`, mimeType, size };
 }
 
-export function isBlobConfigured(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+/** Stream a private Vercel Blob to an Express response. */
+export async function streamPrivateBlob(url: string, res: Response): Promise<void> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) {
+    res.status(500).json({ error: 'Blob storage is not configured' });
+    return;
+  }
+  if (!isPrivateBlobUrl(url) && !url.includes('blob.vercel-storage.com')) {
+    res.status(400).json({ error: 'Invalid media URL' });
+    return;
+  }
+
+  const result = await get(url, { access: 'private', token });
+  if (!result?.stream) {
+    res.status(404).json({ error: 'File not found' });
+    return;
+  }
+
+  const contentType =
+    (typeof result.headers?.get === 'function' ? result.headers.get('content-type') : null) ||
+    'application/octet-stream';
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+
+  const nodeStream = Readable.fromWeb(result.stream as import('stream/web').ReadableStream);
+  nodeStream.pipe(res);
 }

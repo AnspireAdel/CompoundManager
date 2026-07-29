@@ -117,6 +117,18 @@ export interface ChatMessage {
 
 export const UPLOADS_BASE = API_BASE.replace(/\/api\/?$/, '');
 
+export async function resolveUploadUrl(path?: string | null): Promise<string> {
+  if (!path) return '';
+  if (path.includes('.private.blob.vercel-storage.com')) {
+    const token = await getToken();
+    const qs = new URLSearchParams({ url: path });
+    if (token) qs.set('access_token', token);
+    return `${API_BASE}/media?${qs.toString()}`;
+  }
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${UPLOADS_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 export interface Notification {
   id: number;
   type: string;

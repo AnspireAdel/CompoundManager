@@ -526,7 +526,11 @@ router.post('/:id/messages', (req, res, next) => {
     uploaded = await saveUpload('chats', file);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: 'فشل رفع الملف' });
+    const detail = err instanceof Error ? err.message : '';
+    return res.status(500).json({
+      error: 'فشل رفع الملف',
+      detail: detail || undefined,
+    });
   }
 
   const message = await prisma.chatMessage.create({

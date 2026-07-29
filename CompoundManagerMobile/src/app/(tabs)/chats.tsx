@@ -15,18 +15,22 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { api, ChatGroupSummary, ChatMessage, UPLOADS_BASE } from '@/api/client';
+import { api, ChatGroupSummary, ChatMessage, resolveUploadUrl } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 
-function fileUrl(path?: string | null) {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  return `${UPLOADS_BASE}${path}`;
-}
-
 function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
-  const url = fileUrl(item.filePath);
+  const [url, setUrl] = useState('');
   const isImage = Boolean(item.mimeType?.startsWith('image/'));
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveUploadUrl(item.filePath).then((u) => {
+      if (!cancelled) setUrl(u);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [item.filePath]);
 
   return (
     <View style={[styles.bubbleWrap, mine ? styles.mineWrap : styles.theirWrap]}>

@@ -5,14 +5,22 @@ const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/
 /** Origin that serves `/uploads/...` (API host in production, same origin when proxied locally). */
 export const UPLOADS_BASE = API_BASE === '/api' ? '' : API_BASE.replace(/\/api\/?$/, '');
 
-export function resolveUploadUrl(path?: string | null): string {
-  if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) return path;
-  return `${UPLOADS_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-}
-
 function getToken(): string | null {
   return localStorage.getItem('token');
+}
+
+export function resolveUploadUrl(path?: string | null): string {
+  if (!path) return '';
+  if (path.startsWith('blob:')) return path;
+  // Private Vercel Blob — serve via authenticated API proxy (works for img/video/audio).
+  if (path.includes('.private.blob.vercel-storage.com')) {
+    const token = getToken();
+    const qs = new URLSearchParams({ url: path });
+    if (token) qs.set('access_token', token);
+    return `${API_BASE}/media?${qs.toString()}`;
+  }
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${UPLOADS_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {

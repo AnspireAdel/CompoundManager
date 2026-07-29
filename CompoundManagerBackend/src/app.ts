@@ -20,6 +20,7 @@ import expenseRoutes from './routes/expenses';
 import contactRequestRoutes from './routes/contactRequests';
 import dependentRoutes from './routes/dependents';
 import chatRoutes from './routes/chats';
+import mediaRoutes from './routes/media';
 
 const app = express();
 
@@ -28,7 +29,11 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    blob: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
+  });
 });
 
 app.use('/api/auth', authRoutes);
@@ -47,6 +52,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/contact-requests', contactRequestRoutes);
 app.use('/api/dependents', dependentRoutes);
 app.use('/api/chats', chatRoutes);
+app.use('/api/media', mediaRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

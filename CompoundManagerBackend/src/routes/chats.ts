@@ -9,22 +9,27 @@ import {
   addHouseholdDependentsToChat,
   removeHouseholdDependentsFromChat,
 } from '../lib/residentAccess';
-import { chatUploadsDir, messagePublicSelect } from '../lib/uploads';
 
 const router = Router();
 
 router.use(authenticate);
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+const uploadsDir = path.join(process.cwd(), 'uploads', 'chats');
+fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const ext = path.extname(file.originalname).toLowerCase() || '.bin';
+    cb(null, `${unique}${ext}`);
+  },
 });
 
-function buildChatFilename(originalname: string) {
-  const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-  const ext = path.extname(originalname).toLowerCase() || '.bin';
-  return `${unique}${ext}`;
-}
+const upload = multer({
+  storage,
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
 
 const createGroupSchema = z.object({
   name: z.string().min(1).max(80),
@@ -475,10 +480,7 @@ router.get('/:id/messages', async (req, res) => {
       chatGroupId: id,
       ...(beforeId ? { id: { lt: beforeId } } : {}),
     },
-    select: {
-      ...messagePublicSelect,
-      user: { select: userSelect },
-    },
+    include: { user: { select: userSelect } },
     orderBy: { id: 'desc' },
     take,
   });
@@ -524,26 +526,11 @@ router.post('/:id/messages', (req, res, next) => {
         body: parsed.data.body,
         messageType: 'TEXT',
       },
-      select: {
-        ...messagePublicSelect,
-        user: { select: userSelect },
-      },
+      include: { user: { select: userSelect } },
     });
 
     await prisma.chatGroup.update({ where: { id }, data: { updatedAt: new Date() } });
     return res.status(201).json(message);
-  }
-
-  if (!file.buffer?.length) {
-    return res.status(400).json({ error: 'الملف فارغ' });
-  }
-
-  const filename = buildChatFilename(file.originalname);
-  const relativePath = `/uploads/chats/${filename}`;
-  try {
-    fs.writeFileSync(path.join(chatUploadsDir, filename), file.buffer);
-  } catch (err) {
-    console.error('Failed writing chat upload to disk', err);
   }
 
   const messageType = detectMessageType(file.mimetype, explicitType);
@@ -554,15 +541,11 @@ router.post('/:id/messages', (req, res, next) => {
       body: bodyRaw || (messageType === 'AUDIO' ? 'رسالة صوتية' : file.originalname),
       messageType,
       fileName: file.originalname,
-      filePath: relativePath,
+      filePath: `/uploads/chats/${file.filename}`,
       mimeType: file.mimetype,
       fileSize: file.size,
-      fileData: new Uint8Array(file.buffer),
     },
-    select: {
-      ...messagePublicSelect,
-      user: { select: userSelect },
-    },
+    include: { user: { select: userSelect } },
   });
 
   await prisma.chatGroup.update({ where: { id }, data: { updatedAt: new Date() } });

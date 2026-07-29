@@ -1,16 +1,5 @@
 {
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://compoundmanager-2pm1.onrender.com/api/:path*"
-    },
-    {
-      "source": "/uploads/:path*",
-      "destination": "https://compoundmanager-2pm1.onrender.com/uploads/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

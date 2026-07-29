@@ -56,6 +56,9 @@ function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
   }
   if (type === 'FILE' && fileSrc) {
     const isImage = Boolean(m.mimeType?.startsWith('image/'));
+    const isVideo =
+      Boolean(m.mimeType?.startsWith('video/')) ||
+      Boolean(m.fileName?.match(/\.(mp4|webm|ogg|mov|m4v)$/i));
     const isPdf =
       m.mimeType === 'application/pdf' ||
       Boolean(m.fileName?.toLowerCase().endsWith('.pdf'));
@@ -65,6 +68,19 @@ function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
           <a href={fileSrc} target="_blank" rel="noreferrer">
             <img src={fileSrc} alt={m.fileName || 'صورة'} className="max-h-48 max-w-full rounded-md" />
           </a>
+        ) : isVideo ? (
+          <div className="space-y-1.5">
+            <video
+              controls
+              preload="metadata"
+              src={fileSrc}
+              className="max-h-64 max-w-sm rounded-md bg-black"
+            />
+            <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass}>
+              فتح الفيديو — {m.fileName || 'ملف'}
+              {m.fileSize ? ` (${formatBytes(m.fileSize)})` : ''}
+            </a>
+          </div>
         ) : isPdf ? (
           <div className="space-y-1.5">
             <iframe

@@ -25,7 +25,22 @@ const app = express();
 
 app.use(cors({ origin: corsOrigins(), credentials: true }));
 app.use(express.json());
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+// Chat/payment uploads must be readable from the web app origin (images, video, PDF).
+app.use(
+  '/uploads',
+  (_req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    next();
+  },
+  express.static(path.join(process.cwd(), 'uploads'), {
+    setHeaders(res, filePath) {
+      if (/\.(mp4|webm|mov|m4v)$/i.test(filePath)) {
+        res.setHeader('Accept-Ranges', 'bytes');
+      }
+    },
+  })
+);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

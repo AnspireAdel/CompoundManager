@@ -42,38 +42,81 @@ function memberPhone(u?: ChatUserRef | null) {
 
 function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
   const linkClass = mine ? 'underline opacity-90' : 'underline text-primary';
-  const type = m.messageType || 'TEXT';
+  const type = m.messageType || (m.filePath ? 'FILE' : 'TEXT');
   const fileSrc = uploadsUrl(m.filePath);
-  if (type === 'AUDIO' && fileSrc) {
+  const mime = (m.mimeType || '').toLowerCase();
+  const name = (m.fileName || '').toLowerCase();
+  const isImage =
+    mime.startsWith('image/') ||
+    /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
+  const isVideo =
+    mime.startsWith('video/') ||
+    /\.(mp4|webm|ogg|mov|m4v)$/i.test(name);
+  const isAudio =
+    type === 'AUDIO' ||
+    mime.startsWith('audio/') ||
+    /\.(webm|mp3|m4a|wav|ogg|aac)$/i.test(name);
+  const isPdf = mime === 'application/pdf' || name.endsWith('.pdf');
+
+  if (isAudio && fileSrc) {
     return (
       <div className="space-y-1">
         <audio controls src={fileSrc} className="max-w-full" preload="metadata" />
-        {m.body && m.body !== 'رسالة صوتية' && (
+        {m.body && m.body !== 'رسالة صوتية' && m.body !== m.fileName && (
           <div className="whitespace-pre-wrap">{m.body}</div>
         )}
       </div>
     );
   }
-  if (type === 'FILE' && fileSrc) {
-    const isImage = Boolean(m.mimeType?.startsWith('image/'));
+
+  if ((type === 'FILE' || m.filePath) && fileSrc) {
     return (
-      <div className="space-y-1">
+      <div className="space-y-1 min-w-0">
         {isImage ? (
-          <a href={fileSrc} target="_blank" rel="noreferrer">
-            <img src={fileSrc} alt={m.fileName || 'صورة'} className="max-h-48 max-w-full rounded-md" />
+          <a href={fileSrc} target="_blank" rel="noreferrer" className="block">
+            <img
+              src={fileSrc}
+              alt={m.fileName || 'صورة'}
+              className="max-h-64 max-w-full rounded-md object-contain bg-black/5"
+            />
           </a>
+        ) : isVideo ? (
+          <video
+            controls
+            src={fileSrc}
+            className="max-h-64 max-w-full rounded-md bg-black"
+            preload="metadata"
+            playsInline
+          />
+        ) : isPdf ? (
+          <div className="space-y-2">
+            <iframe
+              src={fileSrc}
+              title={m.fileName || 'PDF'}
+              className="h-64 w-full max-w-md rounded-md border bg-white"
+            />
+            <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass}>
+              فتح الملف: {m.fileName || 'PDF'}
+            </a>
+          </div>
         ) : (
-          <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass} download={m.fileName || undefined}>
+          <a
+            href={fileSrc}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(linkClass, 'inline-flex items-center gap-1 break-all')}
+          >
             📎 {m.fileName || 'ملف مرفق'}
             {m.fileSize ? ` (${formatBytes(m.fileSize)})` : ''}
           </a>
         )}
-        {m.body && m.body !== m.fileName && (
+        {m.body && m.body !== m.fileName && m.body !== 'رسالة صوتية' && (
           <div className="whitespace-pre-wrap">{m.body}</div>
         )}
       </div>
     );
   }
+
   return <div className="whitespace-pre-wrap">{m.body}</div>;
 }
 

@@ -28,7 +28,7 @@ const emptyForm = {
   landLine: '',
   nationality: '',
   monthlyFees: '' as string | number,
-  residentType: '',
+  residentType: 'O',
   unitTypeId: '' as string | number,
   notes: '',
 };
@@ -75,6 +75,7 @@ export default function ResidentsPage() {
     const first = unitTypes.find((t) => t.activeFlag === 'Y') || unitTypes[0];
     setForm({
       ...emptyForm,
+      residentType: 'O',
       unitTypeId: first?.id || '',
       monthlyFees: first?.monthlyFees ?? 500,
     });
@@ -138,6 +139,7 @@ export default function ResidentsPage() {
         apartmentNo: type?.hasApartment ? String(form.apartmentNo).trim() : '0',
         monthlyFees: Number(form.monthlyFees),
         unitTypeId: Number(form.unitTypeId),
+        residentType: form.residentType === 'T' ? 'T' : 'O',
         email: form.email || undefined,
         landLine: form.landLine || undefined,
         notes: form.notes.trim() || null,

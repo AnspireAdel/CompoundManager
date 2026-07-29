@@ -20,7 +20,10 @@ const residentSchema = z.object({
   buildingNo: z.string().max(5),
   floorNo: z.number().int().min(0).max(99).optional(),
   apartmentNo: z.union([z.string(), z.number()]).transform((v) => String(v).trim()).optional(),
-  residentType: z.enum(['O', 'T']).default('O'),
+  residentType: z
+    .union([z.enum(['O', 'T']), z.literal('')])
+    .optional()
+    .transform((v) => (v === 'T' ? 'T' : 'O')),
   residentName: z.string().max(60),
   nationality: z.string().max(30).default('مصري'),
   mobile: z.string().max(30),

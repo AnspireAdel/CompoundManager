@@ -77,7 +77,7 @@ function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
               className="max-h-64 max-w-sm rounded-md bg-black"
             />
             <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass}>
-              فتح الفيديو — {m.fileName || 'ملف'}
+              {m.fileName || 'ملف'}
               {m.fileSize ? ` (${formatBytes(m.fileSize)})` : ''}
             </a>
           </div>
@@ -89,7 +89,7 @@ function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
               className="h-64 w-full min-w-[220px] max-w-sm rounded-md border bg-white"
             />
             <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass}>
-              فتح PDF — {m.fileName || 'ملف'}
+              {m.fileName || 'ملف'}
               {m.fileSize ? ` (${formatBytes(m.fileSize)})` : ''}
             </a>
           </div>

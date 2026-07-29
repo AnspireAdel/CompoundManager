@@ -56,12 +56,27 @@ function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
   }
   if (type === 'FILE' && fileSrc) {
     const isImage = Boolean(m.mimeType?.startsWith('image/'));
+    const isPdf =
+      m.mimeType === 'application/pdf' ||
+      Boolean(m.fileName?.toLowerCase().endsWith('.pdf'));
     return (
       <div className="space-y-1">
         {isImage ? (
           <a href={fileSrc} target="_blank" rel="noreferrer">
             <img src={fileSrc} alt={m.fileName || 'صورة'} className="max-h-48 max-w-full rounded-md" />
           </a>
+        ) : isPdf ? (
+          <div className="space-y-1.5">
+            <iframe
+              title={m.fileName || 'PDF'}
+              src={`${fileSrc}#toolbar=0&navpanes=0`}
+              className="h-64 w-full min-w-[220px] max-w-sm rounded-md border bg-white"
+            />
+            <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass}>
+              فتح PDF — {m.fileName || 'ملف'}
+              {m.fileSize ? ` (${formatBytes(m.fileSize)})` : ''}
+            </a>
+          </div>
         ) : (
           <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass} download={m.fileName || undefined}>
             📎 {m.fileName || 'ملف مرفق'}

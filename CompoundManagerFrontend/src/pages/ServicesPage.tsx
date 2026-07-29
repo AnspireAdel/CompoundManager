@@ -37,6 +37,7 @@ export default function ServicesPage() {
     notes: '',
     residentId: '' as string | number,
   });
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -93,23 +94,46 @@ export default function ServicesPage() {
     });
   }, [services, typeFilter, statusFilter, search, isStaff]);
 
-  async function handleCreate(e: FormEvent) {
+  function startEdit(s: Service) {
+    setEditingId(s.id);
+    setForm({
+      serviceType: s.serviceType,
+      serviceName: s.serviceName,
+      mobile: s.mobile,
+      notes: s.notes || '',
+      residentId: s.residentId ?? '',
+    });
+    setShowForm(true);
+  }
+
+  function cancelForm() {
+    setShowForm(false);
+    setEditingId(null);
+    setForm({ serviceType: '', serviceName: '', mobile: '', notes: '', residentId: '' });
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
     try {
-      await api.createService({
+      const payload = {
         serviceType: form.serviceType,
         serviceName: form.serviceName,
         mobile: form.mobile,
         notes: form.notes || undefined,
         residentId: form.residentId ? Number(form.residentId) : null,
-      });
-      setShowForm(false);
-      setForm({ serviceType: '', serviceName: '', mobile: '', notes: '', residentId: '' });
-      setMessage('تم إضافة الخدمة');
+      };
+      if (editingId) {
+        await api.updateService(editingId, payload);
+        setMessage('تم تعديل الخدمة');
+      } else {
+        await api.createService(payload);
+        setMessage('تم إضافة الخدمة');
+      }
+      cancelForm();
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل الإضافة');
+      setError(err instanceof Error ? err.message : 'فشل الحفظ');
     }
   }
 
@@ -145,7 +169,7 @@ export default function ServicesPage() {
     <div className="space-y-4">
       <PageHeader title="خدمات الوحدات">
         {isStaff && (
-          <Button onClick={() => setShowForm(!showForm)}>
+          <Button onClick={() => showForm ? cancelForm() : setShowForm(true)}>
             {showForm ? 'إلغاء' : '+ إضافة خدمة'}
           </Button>
         )}
@@ -157,10 +181,10 @@ export default function ServicesPage() {
       {showForm && isStaff && (
         <Card>
           <CardHeader>
-            <CardTitle>إضافة خدمة</CardTitle>
+            <CardTitle>{editingId ? 'تعديل خدمة' : 'إضافة خدمة'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <FormRow>
                 <FormField label="نوع الخدمة">
                   <Select
@@ -206,7 +230,12 @@ export default function ServicesPage() {
                   rows={2}
                 />
               </FormField>
-              <Button type="submit">حفظ</Button>
+              <div className="flex gap-2">
+                <Button type="submit">حفظ</Button>
+                {editingId && (
+                  <Button type="button" variant="outline" onClick={cancelForm}>إلغاء</Button>
+                )}
+              </div>
             </form>
           </CardContent>
         </Card>
@@ -262,7 +291,6 @@ export default function ServicesPage() {
                   <TableHead>النوع</TableHead>
                   <TableHead>الاسم</TableHead>
                   <TableHead>المالك</TableHead>
-                  <TableHead>مقدم خدمة؟</TableHead>
                   <TableHead>الموبايل</TableHead>
                   <TableHead>الحالة</TableHead>
                   <TableHead />
@@ -274,7 +302,6 @@ export default function ServicesPage() {
                     <TableCell>{s.serviceType}</TableCell>
                     <TableCell>{s.serviceName}</TableCell>
                     <TableCell>{s.resident?.residentName || '—'}</TableCell>
-                    <TableCell>{s.resident?.isServiceProvider ? 'نعم' : 'لا'}</TableCell>
                     <TableCell>{s.mobile}</TableCell>
                     <TableCell>
                       <Badge variant={s.activeFlag === 'Y' ? 'success' : 'destructive'}>
@@ -283,6 +310,9 @@ export default function ServicesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => startEdit(s)}>
+                          تعديل
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => handleToggleActive(s.id)}>
                           {s.activeFlag === 'Y' ? 'إيقاف' : 'تفعيل'}
                         </Button>

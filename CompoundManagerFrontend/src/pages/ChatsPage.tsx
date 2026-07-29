@@ -65,9 +65,13 @@ function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
     return (
       <div className="space-y-1">
         {isImage ? (
-          <a href={fileSrc} target="_blank" rel="noreferrer">
+          <div className="space-y-1.5">
             <img src={fileSrc} alt={m.fileName || 'صورة'} className="max-h-48 max-w-full rounded-md" />
-          </a>
+            <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass}>
+              {m.fileName || 'ملف'}
+              {m.fileSize ? ` (${formatBytes(m.fileSize)})` : ''}
+            </a>
+          </div>
         ) : isVideo ? (
           <div className="space-y-1.5">
             <video

@@ -9,6 +9,7 @@ import {
   addHouseholdDependentsToChat,
   removeHouseholdDependentsFromChat,
 } from '../lib/residentAccess';
+import { decodeUploadName } from '../lib/uploadName';
 
 const router = Router();
 
@@ -534,13 +535,14 @@ router.post('/:id/messages', (req, res, next) => {
   }
 
   const messageType = detectMessageType(file.mimetype, explicitType);
+  const originalName = decodeUploadName(file.originalname);
   const message = await prisma.chatMessage.create({
     data: {
       chatGroupId: id,
       userId,
-      body: bodyRaw || (messageType === 'AUDIO' ? 'رسالة صوتية' : file.originalname),
+      body: bodyRaw || (messageType === 'AUDIO' ? 'رسالة صوتية' : originalName),
       messageType,
-      fileName: file.originalname,
+      fileName: originalName,
       filePath: `/uploads/chats/${file.filename}`,
       mimeType: file.mimetype,
       fileSize: file.size,

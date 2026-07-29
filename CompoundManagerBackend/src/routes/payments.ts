@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma';
 import { authenticate, authorize, ADMIN_ROLES, STAFF_ROLES, isResidentUser } from '../middleware/auth';
 import { recordPayment } from '../services/billService';
 import { createNotification, notifyResident } from '../services/notificationService';
+import { decodeUploadName } from '../lib/uploadName';
 
 const router = Router();
 
@@ -101,7 +102,7 @@ router.post('/', authorize('OWNER', 'DEPENDENT', ...STAFF_ROLES), upload.single(
       residentId: bill.residentId,
       userId: req.user!.id,
       amount,
-      fileName: req.file.originalname,
+      fileName: decodeUploadName(req.file.originalname),
       filePath: `/uploads/payments/${req.file.filename}`,
       fileMime: req.file.mimetype,
       notes,

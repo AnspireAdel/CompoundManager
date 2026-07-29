@@ -11,7 +11,7 @@ import {
   Plus,
   GripVertical,
 } from 'lucide-react';
-import { api } from '@/api/client';
+import { api, uploadsUrl } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import type { ChatGroupDetail, ChatGroupSummary, ChatMessage, ChatUserRef, User } from '@/types';
 import { Alert } from '@/components/ui/alert';
@@ -43,26 +43,27 @@ function memberPhone(u?: ChatUserRef | null) {
 function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
   const linkClass = mine ? 'underline opacity-90' : 'underline text-primary';
   const type = m.messageType || 'TEXT';
-  if (type === 'AUDIO' && m.filePath) {
+  const fileSrc = uploadsUrl(m.filePath);
+  if (type === 'AUDIO' && fileSrc) {
     return (
       <div className="space-y-1">
-        <audio controls src={m.filePath} className="max-w-full" preload="metadata" />
+        <audio controls src={fileSrc} className="max-w-full" preload="metadata" />
         {m.body && m.body !== 'رسالة صوتية' && (
           <div className="whitespace-pre-wrap">{m.body}</div>
         )}
       </div>
     );
   }
-  if (type === 'FILE' && m.filePath) {
+  if (type === 'FILE' && fileSrc) {
     const isImage = Boolean(m.mimeType?.startsWith('image/'));
     return (
       <div className="space-y-1">
         {isImage ? (
-          <a href={m.filePath} target="_blank" rel="noreferrer">
-            <img src={m.filePath} alt={m.fileName || 'صورة'} className="max-h-48 max-w-full rounded-md" />
+          <a href={fileSrc} target="_blank" rel="noreferrer">
+            <img src={fileSrc} alt={m.fileName || 'صورة'} className="max-h-48 max-w-full rounded-md" />
           </a>
         ) : (
-          <a href={m.filePath} target="_blank" rel="noreferrer" className={linkClass} download={m.fileName || undefined}>
+          <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass} download={m.fileName || undefined}>
             📎 {m.fileName || 'ملف مرفق'}
             {m.fileSize ? ` (${formatBytes(m.fileSize)})` : ''}
           </a>

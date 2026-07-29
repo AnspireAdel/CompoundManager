@@ -1,29 +1,15 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import { prisma } from '../lib/prisma';
 import { authenticate, authorize, ADMIN_ROLES, STAFF_ROLES, isResidentUser } from '../middleware/auth';
 import { recordPayment } from '../services/billService';
 import { createNotification, notifyResident } from '../services/notificationService';
-import { decodeUploadName } from '../lib/uploadName';
+import { saveUpload } from '../lib/storage';
 
 const router = Router();
 
-const uploadsDir = path.join(process.cwd(), 'uploads', 'payments');
-fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname).toLowerCase() || '.bin';
-    cb(null, `${unique}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
@@ -96,15 +82,23 @@ router.post('/', authorize('OWNER', 'DEPENDENT', ...STAFF_ROLES), upload.single(
     return res.status(409).json({ error: 'يوجد مستند دفع قيد المراجعة لهذه الفاتورة' });
   }
 
+  let uploaded;
+  try {
+    uploaded = await saveUpload('payments', req.file);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'فشل رفع الملف' });
+  }
+
   const proof = await prisma.paymentProof.create({
     data: {
       billId,
       residentId: bill.residentId,
       userId: req.user!.id,
       amount,
-      fileName: decodeUploadName(req.file.originalname),
-      filePath: `/uploads/payments/${req.file.filename}`,
-      fileMime: req.file.mimetype,
+      fileName: uploaded.originalName,
+      filePath: uploaded.url,
+      fileMime: uploaded.mimeType,
       notes,
       status: 'PENDING',
     },

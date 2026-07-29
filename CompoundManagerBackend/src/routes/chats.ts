@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, authorize, isSuperAdminRole } from '../middleware/auth';
@@ -9,26 +7,14 @@ import {
   addHouseholdDependentsToChat,
   removeHouseholdDependentsFromChat,
 } from '../lib/residentAccess';
-import { decodeUploadName } from '../lib/uploadName';
+import { saveUpload } from '../lib/storage';
 
 const router = Router();
 
 router.use(authenticate);
 
-const uploadsDir = path.join(process.cwd(), 'uploads', 'chats');
-fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname).toLowerCase() || '.bin';
-    cb(null, `${unique}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 },
 });
 
@@ -535,17 +521,24 @@ router.post('/:id/messages', (req, res, next) => {
   }
 
   const messageType = detectMessageType(file.mimetype, explicitType);
-  const originalName = decodeUploadName(file.originalname);
+  let uploaded;
+  try {
+    uploaded = await saveUpload('chats', file);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'فشل رفع الملف' });
+  }
+
   const message = await prisma.chatMessage.create({
     data: {
       chatGroupId: id,
       userId,
-      body: bodyRaw || (messageType === 'AUDIO' ? 'رسالة صوتية' : originalName),
+      body: bodyRaw || (messageType === 'AUDIO' ? 'رسالة صوتية' : uploaded.originalName),
       messageType,
-      fileName: originalName,
-      filePath: `/uploads/chats/${file.filename}`,
-      mimeType: file.mimetype,
-      fileSize: file.size,
+      fileName: uploaded.originalName,
+      filePath: uploaded.url,
+      mimeType: uploaded.mimeType,
+      fileSize: uploaded.size,
     },
     include: { user: { select: userSelect } },
   });

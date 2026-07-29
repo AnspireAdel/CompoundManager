@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
-import { config, corsOrigins } from './config/env';
+import { corsOrigins } from './config/env';
 import { errorHandler, notFound } from './middleware/errorHandler';
+import { serveUpload } from './lib/uploads';
 
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
@@ -24,23 +24,10 @@ import chatRoutes from './routes/chats';
 const app = express();
 
 app.use(cors({ origin: corsOrigins(), credentials: true }));
-app.use(express.json());
-// Chat/payment uploads must be readable from the web app origin (images, video, PDF).
-app.use(
-  '/uploads',
-  (_req, res, next) => {
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    next();
-  },
-  express.static(path.join(process.cwd(), 'uploads'), {
-    setHeaders(res, filePath) {
-      if (/\.(mp4|webm|mov|m4v)$/i.test(filePath)) {
-        res.setHeader('Accept-Ranges', 'bytes');
-      }
-    },
-  })
-);
+app.use(express.json({ limit: '2mb' }));
+
+// Public uploads (disk first, then DB blob for chat files)
+app.use('/uploads', serveUpload);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -45,17 +45,18 @@ function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
   const type = m.messageType || (m.filePath ? 'FILE' : 'TEXT');
   const fileSrc = uploadsUrl(m.filePath);
   const mime = (m.mimeType || '').toLowerCase();
-  const name = (m.fileName || '').toLowerCase();
+  const name = (m.fileName || m.filePath || '').toLowerCase();
+
   const isImage =
     mime.startsWith('image/') ||
     /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
   const isVideo =
     mime.startsWith('video/') ||
-    /\.(mp4|webm|ogg|mov|m4v)$/i.test(name);
+    (!mime.startsWith('audio/') && type !== 'AUDIO' && /\.(mp4|webm|ogg|mov|m4v)$/i.test(name));
   const isAudio =
     type === 'AUDIO' ||
     mime.startsWith('audio/') ||
-    /\.(webm|mp3|m4a|wav|ogg|aac)$/i.test(name);
+    (!isVideo && /\.(webm|mp3|m4a|wav|ogg|aac)$/i.test(name));
   const isPdf = mime === 'application/pdf' || name.endsWith('.pdf');
 
   if (isAudio && fileSrc) {
@@ -82,21 +83,28 @@ function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
           </a>
         ) : isVideo ? (
           <video
+            key={fileSrc}
             controls
-            src={fileSrc}
             className="max-h-64 max-w-full rounded-md bg-black"
             preload="metadata"
             playsInline
-          />
+          >
+            <source src={fileSrc} type={mime || undefined} />
+          </video>
         ) : isPdf ? (
           <div className="space-y-2">
-            <iframe
-              src={fileSrc}
-              title={m.fileName || 'PDF'}
-              className="h-64 w-full max-w-md rounded-md border bg-white"
-            />
+            <object
+              data={fileSrc}
+              type="application/pdf"
+              className="h-72 w-full max-w-md rounded-md border bg-white"
+            >
+              <p className="p-3 text-sm text-muted-foreground">
+                تعذر عرض الملف داخل الصفحة.
+              </p>
+            </object>
             <a href={fileSrc} target="_blank" rel="noreferrer" className={linkClass}>
-              فتح الملف: {m.fileName || 'PDF'}
+              فتح PDF: {m.fileName || 'مستند'}
+              {m.fileSize ? ` (${formatBytes(m.fileSize)})` : ''}
             </a>
           </div>
         ) : (

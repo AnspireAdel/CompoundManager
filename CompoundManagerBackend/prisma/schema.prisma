@@ -404,6 +404,8 @@ model ChatMessage {
   filePath    String?  @map("FILE_PATH")
   mimeType    String?  @map("MIME_TYPE")
   fileSize    Int?     @map("FILE_SIZE")
+  /// Stored so files survive Render ephemeral disk wipes
+  fileData    Bytes?   @map("FILE_DATA")
   createdAt   DateTime @default(now()) @map("CREATED_AT")
 
   chatGroup ChatGroup @relation(fields: [chatGroupId], references: [id], onDelete: Cascade)

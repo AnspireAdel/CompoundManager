@@ -14,8 +14,9 @@ type Target = 'area' | 'building' | 'owner';
 export default function SendNotificationsPage() {
   const [residents, setResidents] = useState<Resident[]>([]);
   const [target, setTarget] = useState<Target>('area');
-  const [area, setArea] = useState('');
-  const [buildingNo, setBuildingNo] = useState('');
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [buildingArea, setBuildingArea] = useState('');
+  const [selectedBuildings, setSelectedBuildings] = useState<string[]>([]);
   const [residentId, setResidentId] = useState('');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -33,28 +34,38 @@ export default function SendNotificationsPage() {
   );
 
   const buildings = useMemo(() => {
+    if (!buildingArea) return [];
     const list = residents
-      .filter((r) => !area || r.area === area)
+      .filter((r) => r.area === buildingArea)
       .map((r) => r.buildingNo);
     return Array.from(new Set(list.filter(Boolean))).sort();
-  }, [residents, area]);
+  }, [residents, buildingArea]);
 
-  const owners = useMemo(
-    () =>
-      residents.filter((r) => {
-        if (area && r.area !== area) return false;
-        if (buildingNo && r.buildingNo !== buildingNo) return false;
-        return true;
-      }),
-    [residents, area, buildingNo]
-  );
+  const owners = useMemo(() => residents, [residents]);
+
+  function toggleArea(a: string) {
+    setSelectedAreas((prev) =>
+      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]
+    );
+  }
+
+  function toggleBuilding(b: string) {
+    setSelectedBuildings((prev) =>
+      prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]
+    );
+  }
 
   const previewCount = useMemo(() => {
     if (target === 'owner') return residentId ? 1 : 0;
-    if (target === 'area') return area ? residents.filter((r) => r.area === area).length : 0;
-    if (!area || !buildingNo) return 0;
-    return residents.filter((r) => r.area === area && r.buildingNo === buildingNo).length;
-  }, [target, residentId, residents, area, buildingNo]);
+    if (target === 'area') {
+      if (selectedAreas.length === 0) return 0;
+      return residents.filter((r) => selectedAreas.includes(r.area)).length;
+    }
+    if (!buildingArea || selectedBuildings.length === 0) return 0;
+    return residents.filter(
+      (r) => r.area === buildingArea && selectedBuildings.includes(r.buildingNo)
+    ).length;
+  }, [target, residentId, residents, selectedAreas, buildingArea, selectedBuildings]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -64,12 +75,27 @@ export default function SendNotificationsPage() {
     try {
       let result;
       if (target === 'area') {
-        result = await api.sendNotification({ target: 'area', area, title, message });
+        if (selectedAreas.length === 0) {
+          setError('اختر مجاورة واحدة على الأقل');
+          setSending(false);
+          return;
+        }
+        result = await api.sendNotification({
+          target: 'area',
+          areas: selectedAreas,
+          title,
+          message,
+        });
       } else if (target === 'building') {
+        if (!buildingArea || selectedBuildings.length === 0) {
+          setError('اختر المجاورة والقطع');
+          setSending(false);
+          return;
+        }
         result = await api.sendNotification({
           target: 'building',
-          area,
-          buildingNo,
+          area: buildingArea,
+          buildings: selectedBuildings,
           title,
           message,
         });
@@ -105,7 +131,12 @@ export default function SendNotificationsPage() {
                     type="radio"
                     className="size-4"
                     checked={target === 'area'}
-                    onChange={() => setTarget('area')}
+                    onChange={() => {
+                      setTarget('area');
+                      setSelectedBuildings([]);
+                      setBuildingArea('');
+                      setResidentId('');
+                    }}
                   />
                   ملاك مجاورة
                 </label>
@@ -114,7 +145,11 @@ export default function SendNotificationsPage() {
                     type="radio"
                     className="size-4"
                     checked={target === 'building'}
-                    onChange={() => setTarget('building')}
+                    onChange={() => {
+                      setTarget('building');
+                      setSelectedAreas([]);
+                      setResidentId('');
+                    }}
                   />
                   ملاك قطعة
                 </label>
@@ -123,64 +158,101 @@ export default function SendNotificationsPage() {
                     type="radio"
                     className="size-4"
                     checked={target === 'owner'}
-                    onChange={() => setTarget('owner')}
+                    onChange={() => {
+                      setTarget('owner');
+                      setSelectedAreas([]);
+                      setSelectedBuildings([]);
+                      setBuildingArea('');
+                    }}
                   />
                   مالك محدد
                 </label>
               </div>
             </FormField>
 
-            <FormRow>
-              {target !== 'owner' && (
+            {target === 'area' && (
+              <FormField label="المجاورات (اختر واحدة أو أكتر)">
+                <div className="flex flex-wrap gap-2 rounded-md border p-3">
+                  {areas.length === 0 && (
+                    <span className="text-sm text-muted-foreground">لا توجد مجاورات</span>
+                  )}
+                  {areas.map((a) => (
+                    <label
+                      key={a}
+                      className="flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10"
+                    >
+                      <input
+                        type="checkbox"
+                        className="size-3.5"
+                        checked={selectedAreas.includes(a)}
+                        onChange={() => toggleArea(a)}
+                      />
+                      {a}
+                    </label>
+                  ))}
+                </div>
+              </FormField>
+            )}
+
+            {target === 'building' && (
+              <FormRow>
                 <FormField label="المجاورة">
                   <Select
-                    value={area}
+                    value={buildingArea}
                     onChange={(e) => {
-                      setArea(e.target.value);
-                      setBuildingNo('');
+                      setBuildingArea(e.target.value);
+                      setSelectedBuildings([]);
                     }}
                     required
                   >
-                    <option value="">اختر...</option>
+                    <option value="">اختر المجاورة...</option>
                     {areas.map((a) => (
                       <option key={a} value={a}>{a}</option>
                     ))}
                   </Select>
                 </FormField>
-              )}
+                {buildingArea && (
+                  <FormField label="القطع (اختر واحدة أو أكتر)">
+                    <div className="flex flex-wrap gap-2 rounded-md border p-3">
+                      {buildings.length === 0 && (
+                        <span className="text-sm text-muted-foreground">لا توجد قطع</span>
+                      )}
+                      {buildings.map((b) => (
+                        <label
+                          key={b}
+                          className="flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10"
+                        >
+                          <input
+                            type="checkbox"
+                            className="size-3.5"
+                            checked={selectedBuildings.includes(b)}
+                            onChange={() => toggleBuilding(b)}
+                          />
+                          {b}
+                        </label>
+                      ))}
+                    </div>
+                  </FormField>
+                )}
+              </FormRow>
+            )}
 
-              {target === 'building' && (
-                <FormField label="القطعة">
-                  <Select
-                    value={buildingNo}
-                    onChange={(e) => setBuildingNo(e.target.value)}
-                    required
-                  >
-                    <option value="">اختر...</option>
-                    {buildings.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </Select>
-                </FormField>
-              )}
-
-              {target === 'owner' && (
-                <FormField label="المالك">
-                  <Select
-                    value={residentId}
-                    onChange={(e) => setResidentId(e.target.value)}
-                    required
-                  >
-                    <option value="">اختر...</option>
-                    {owners.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.residentName} — {r.area}-{r.buildingNo} / {r.floorNo} / {r.apartmentNo}
-                      </option>
-                    ))}
-                  </Select>
-                </FormField>
-              )}
-            </FormRow>
+            {target === 'owner' && (
+              <FormField label="المالك">
+                <Select
+                  value={residentId}
+                  onChange={(e) => setResidentId(e.target.value)}
+                  required
+                >
+                  <option value="">اختر...</option>
+                  {owners.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.residentName} — {r.area}-{r.buildingNo} / {r.floorNo} / {r.apartmentNo}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            )}
 
             <FormField label="عنوان الإشعار">
               <Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={120} />

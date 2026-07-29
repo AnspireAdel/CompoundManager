@@ -15,14 +15,14 @@ router.use(authenticate);
 const sendSchema = z.discriminatedUnion('target', [
   z.object({
     target: z.literal('area'),
-    area: z.string().min(1),
+    areas: z.array(z.string().min(1)).min(1),
     title: z.string().min(1).max(120),
     message: z.string().min(1).max(1000),
   }),
   z.object({
     target: z.literal('building'),
     area: z.string().min(1),
-    buildingNo: z.string().min(1),
+    buildings: z.array(z.string().min(1)).min(1),
     title: z.string().min(1).max(120),
     message: z.string().min(1).max(1000),
   }),
@@ -76,14 +76,14 @@ router.post('/send', authorize(...STAFF_ROLES), async (req, res) => {
     result = await notifyOwnersTargeted({
       title: data.title,
       message: data.message,
-      area: data.area,
+      areas: data.areas,
     });
   } else if (data.target === 'building') {
     result = await notifyOwnersTargeted({
       title: data.title,
       message: data.message,
       area: data.area,
-      buildingNo: data.buildingNo,
+      buildings: data.buildings,
     });
   } else {
     result = await notifyOwnersTargeted({

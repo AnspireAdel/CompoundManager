@@ -336,8 +336,8 @@ export const api = {
   runReminders: () => request('/notifications/run-reminders', { method: 'POST' }),
 
   sendNotification: (data:
-    | { target: 'area'; area: string; title: string; message: string }
-    | { target: 'building'; area: string; buildingNo: string; title: string; message: string }
+    | { target: 'area'; areas: string[]; title: string; message: string }
+    | { target: 'building'; area: string; buildings: string[]; title: string; message: string }
     | { target: 'owner'; residentId: number; title: string; message: string }
   ) =>
     request<{ sent: number; recipients: unknown[] }>('/notifications/send', {

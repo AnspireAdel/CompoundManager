@@ -18,17 +18,17 @@ import { EmptyState, FormField, FormRow, PageHeader } from '@/components/ui-help
 import { Textarea } from '@/components/ui/textarea';
 
 const emptyForm = {
-  area: 'A',
-  buildingNo: '01',
-  floorNo: 1,
-  apartmentNo: '1',
+  area: '',
+  buildingNo: '',
+  floorNo: '' as string | number,
+  apartmentNo: '',
   residentName: '',
   mobile: '',
   email: '',
   landLine: '',
-  nationality: 'مصري',
-  monthlyFees: 500,
-  residentType: 'O',
+  nationality: '',
+  monthlyFees: '' as string | number,
+  residentType: '',
   unitTypeId: '' as string | number,
   notes: '',
 };

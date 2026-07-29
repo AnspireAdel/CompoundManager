@@ -181,9 +181,9 @@ export default function ServicesPage() {
                     required
                   />
                 </FormField>
-                <FormField label="مقدم الخدمة (المالك)">
-                  <Select value={form.residentId} onChange={(e) => onResidentChange(e.target.value)} required>
-                    <option value="">اختر المالك...</option>
+                <FormField label="مقدم الخدمة (اختياري)">
+                  <Select value={form.residentId} onChange={(e) => onResidentChange(e.target.value)}>
+                    <option value="">بدون مقدم خدمة</option>
                     {residents.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.residentName} — {r.area}-{r.buildingNo}/{r.apartmentNo}

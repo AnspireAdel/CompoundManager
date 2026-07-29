@@ -58,23 +58,21 @@ export async function notifyStaff(type: NotificationType, title: string, message
   );
 }
 
-/** Notify approved owners linked to residents matching area / building / residentId. */
+/** Notify approved owners linked to residents matching areas / buildings / residentId. */
 export async function notifyOwnersTargeted(params: {
   title: string;
   message: string;
   type?: NotificationType;
   area?: string;
+  areas?: string[];
   buildingNo?: string;
+  buildings?: string[];
   residentId?: number;
 }) {
-  const { title, message, type = 'SYSTEM', area, buildingNo, residentId } = params;
+  const { title, message, type = 'SYSTEM', area, areas, buildingNo, buildings, residentId } = params;
 
-  const where: {
-    role: 'OWNER';
-    status: 'APPROVED';
-    residentId?: number | { not: null };
-    resident?: { area?: string; buildingNo?: string };
-  } = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = {
     role: 'OWNER',
     status: 'APPROVED',
     residentId: { not: null },
@@ -82,6 +80,10 @@ export async function notifyOwnersTargeted(params: {
 
   if (residentId) {
     where.residentId = residentId;
+  } else if (areas && areas.length > 0) {
+    where.resident = { area: { in: areas } };
+  } else if (area && buildings && buildings.length > 0) {
+    where.resident = { area, buildingNo: { in: buildings } };
   } else if (area || buildingNo) {
     where.resident = {};
     if (area) where.resident.area = area;

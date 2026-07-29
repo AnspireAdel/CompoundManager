@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, uploadsUrl } from '@/api/client';
+import { api, resolveUploadUrl } from '@/api/client';
 import type { PaymentProof } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -74,7 +74,7 @@ export default function PaymentsPage() {
                     <TableCell>{p.amount} ج.م</TableCell>
                     <TableCell>
                       <a
-                        href={uploadsUrl(p.filePath)}
+                        href={resolveUploadUrl(p.filePath)}
                         target="_blank"
                         rel="noreferrer"
                         className="text-primary hover:underline"

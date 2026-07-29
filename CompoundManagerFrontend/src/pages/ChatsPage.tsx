@@ -11,7 +11,7 @@ import {
   Plus,
   GripVertical,
 } from 'lucide-react';
-import { api, uploadsUrl } from '@/api/client';
+import { api, resolveUploadUrl } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import type { ChatGroupDetail, ChatGroupSummary, ChatMessage, ChatUserRef, User } from '@/types';
 import { Alert } from '@/components/ui/alert';
@@ -43,7 +43,7 @@ function memberPhone(u?: ChatUserRef | null) {
 function MessageContent({ m, mine }: { m: ChatMessage; mine: boolean }) {
   const linkClass = mine ? 'underline opacity-90' : 'underline text-primary';
   const type = m.messageType || 'TEXT';
-  const fileSrc = uploadsUrl(m.filePath);
+  const fileSrc = resolveUploadUrl(m.filePath);
   if (type === 'AUDIO' && fileSrc) {
     return (
       <div className="space-y-1">

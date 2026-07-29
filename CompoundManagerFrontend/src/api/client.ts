@@ -2,12 +2,12 @@ import type { User, Resident, Bill, Transaction, Service, Notification, Dashboar
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api';
 
-/** Origin that serves `/uploads/...` (API host, or empty when using Vite proxy). */
+/** Origin that serves `/uploads/...` (API host in production, same origin when proxied locally). */
 export const UPLOADS_BASE = API_BASE === '/api' ? '' : API_BASE.replace(/\/api\/?$/, '');
 
-export function uploadsUrl(path?: string | null): string {
+export function resolveUploadUrl(path?: string | null): string {
   if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) return path;
   return `${UPLOADS_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 }
 

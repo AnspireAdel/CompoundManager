@@ -2,6 +2,7 @@ import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-rout
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { Brand } from '@/constants/theme';
 
 const PUBLIC_ROUTES = new Set(['login', 'register', 'forgot-password', 'reset-password']);
 
@@ -37,7 +38,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading || !navState?.key) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Brand.primary} />
       </View>
     );
   }

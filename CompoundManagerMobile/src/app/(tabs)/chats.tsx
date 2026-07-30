@@ -1,12 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, RefreshControl,
-  Linking, Image,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  RefreshControl,
+  Linking,
+  Image,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { WebView } from 'react-native-webview';
 import {
   AudioModule,
   RecordingPresets,
@@ -17,10 +31,97 @@ import {
 } from 'expo-audio';
 import { api, ChatGroupSummary, ChatMessage, resolveUploadUrl } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
+import { Brand } from '@/constants/theme';
+
+const PRIMARY = Brand.primary;
+const PRIMARY_DARK = Brand.primaryDark;
+const BG = Brand.background;
+const SURFACE = Brand.surface;
+const MUTED = Brand.muted;
+const BORDER = Brand.border;
+const DANGER = Brand.danger;
+
+function formatBytes(n?: number | null) {
+  if (!n) return '';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDuration(totalSec: number) {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function isImageMime(mime?: string | null) {
+  return Boolean(mime?.startsWith('image/'));
+}
+
+function isVideoMime(mime?: string | null, name?: string | null) {
+  return Boolean(mime?.startsWith('video/') || name?.match(/\.(mp4|webm|mov|m4v)$/i));
+}
+
+function isPdfMime(mime?: string | null, name?: string | null) {
+  return mime === 'application/pdf' || Boolean(name?.toLowerCase().endsWith('.pdf'));
+}
+
+function isAudioMsg(item: ChatMessage) {
+  return (
+    item.messageType === 'AUDIO' ||
+    Boolean(item.mimeType?.startsWith('audio/'))
+  );
+}
+
+function groupInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'م';
+  if (parts.length === 1) return parts[0].slice(0, 1);
+  return (parts[0][0] + parts[1][0]).slice(0, 2);
+}
+
+function FileLink({
+  url,
+  label,
+  size,
+  mine,
+}: {
+  url: string;
+  label: string;
+  size?: number | null;
+  mine: boolean;
+}) {
+  return (
+    <TouchableOpacity onPress={() => Linking.openURL(url)} activeOpacity={0.7}>
+      <Text style={[styles.fileLink, mine && styles.fileLinkMine]} numberOfLines={2}>
+        {label}
+        {size ? ` (${formatBytes(size)})` : ''}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function VideoPreview({ url }: { url: string }) {
+  const player = useVideoPlayer(url, (p) => {
+    p.loop = false;
+  });
+  return (
+    <VideoView
+      player={player}
+      style={styles.video}
+      nativeControls
+      contentFit="contain"
+      fullscreenOptions={{ enable: true }}
+    />
+  );
+}
 
 function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
   const [url, setUrl] = useState('');
-  const isImage = Boolean(item.mimeType?.startsWith('image/'));
+  const image = isImageMime(item.mimeType);
+  const video = isVideoMime(item.mimeType, item.fileName);
+  const pdf = isPdfMime(item.mimeType, item.fileName);
+  const audio = isAudioMsg(item);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,8 +138,9 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
       <View style={[styles.bubble, mine ? styles.mine : styles.their]}>
         {!mine && <Text style={styles.sender}>{item.user.name}</Text>}
 
-        {(item.messageType === 'AUDIO' || (!item.messageType && item.mimeType?.startsWith('audio/'))) && url ? (
+        {audio && url ? (
           <TouchableOpacity
+            style={[styles.audioRow, mine && styles.audioRowMine]}
             onPress={() => {
               try {
                 const player = createAudioPlayer(url);
@@ -47,18 +149,75 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
                 Alert.alert('خطأ', 'تعذر تشغيل الصوت');
               }
             }}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.body, mine && styles.mineBody]}>▶ رسالة صوتية</Text>
+            <View style={[styles.audioIcon, mine && styles.audioIconMine]}>
+              <Ionicons name="play" size={16} color={mine ? PRIMARY : '#fff'} />
+            </View>
+            <Text style={[styles.body, mine && styles.mineBody]}>رسالة صوتية</Text>
           </TouchableOpacity>
-        ) : (item.messageType === 'FILE' || item.filePath) && url && isImage ? (
-          <TouchableOpacity onPress={() => Linking.openURL(url)}>
+        ) : item.filePath && url && image ? (
+          <View style={styles.mediaBlock}>
             <Image source={{ uri: url }} style={styles.image} resizeMode="cover" />
-          </TouchableOpacity>
+            <FileLink
+              url={url}
+              label={item.fileName || 'صورة'}
+              size={item.fileSize}
+              mine={mine}
+            />
+          </View>
+        ) : item.filePath && url && video ? (
+          <View style={styles.mediaBlock}>
+            <VideoPreview url={url} />
+            <FileLink
+              url={url}
+              label={item.fileName || 'فيديو'}
+              size={item.fileSize}
+              mine={mine}
+            />
+          </View>
+        ) : item.filePath && url && pdf ? (
+          <View style={styles.mediaBlock}>
+            <View style={styles.pdfFrame}>
+              <WebView
+                source={{ uri: url }}
+                style={styles.pdfWeb}
+                originWhitelist={['*']}
+                startInLoadingState
+                renderLoading={() => (
+                  <View style={styles.pdfLoading}>
+                    <ActivityIndicator color={PRIMARY} />
+                  </View>
+                )}
+              />
+            </View>
+            <FileLink
+              url={url}
+              label={item.fileName || 'PDF'}
+              size={item.fileSize}
+              mine={mine}
+            />
+          </View>
         ) : item.filePath && url && item.messageType !== 'TEXT' ? (
-          <TouchableOpacity onPress={() => Linking.openURL(url)}>
-            <Text style={[styles.link, mine && styles.mineBody]}>
-              📎 {item.fileName || 'ملف مرفق'}
-            </Text>
+          <TouchableOpacity
+            style={[styles.fileCard, mine && styles.fileCardMine]}
+            onPress={() => Linking.openURL(url)}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.fileIconWrap, mine && styles.fileIconWrapMine]}>
+              <Ionicons name="document-text-outline" size={22} color={mine ? '#fff' : PRIMARY} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fileName, mine && styles.mineBody]} numberOfLines={2}>
+                {item.fileName || 'ملف مرفق'}
+              </Text>
+              {!!item.fileSize && (
+                <Text style={[styles.fileMeta, mine && styles.mineMeta]}>
+                  {formatBytes(item.fileSize)}
+                </Text>
+              )}
+            </View>
+            <Ionicons name="open-outline" size={18} color={mine ? 'rgba(255,255,255,0.85)' : MUTED} />
           </TouchableOpacity>
         ) : (
           <Text style={[styles.body, mine && styles.mineBody]}>{item.body}</Text>
@@ -69,7 +228,7 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
           item.body &&
           item.body !== item.fileName &&
           item.body !== 'رسالة صوتية' && (
-            <Text style={[styles.body, mine && styles.mineBody, { marginTop: 4 }]}>{item.body}</Text>
+            <Text style={[styles.body, mine && styles.mineBody, { marginTop: 6 }]}>{item.body}</Text>
           )}
 
         <Text style={[styles.time, mine && styles.mineTime]}>
@@ -93,7 +252,9 @@ export default function ChatsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
+  const [recordSecs, setRecordSecs] = useState(0);
   const listRef = useRef<FlatList>(null);
+  const discardRecordingRef = useRef(false);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder);
   const recording = recorderState.isRecording;
@@ -130,6 +291,15 @@ export default function ChatsScreen() {
     }, 4000);
     return () => clearInterval(t);
   }, [selected?.id, selected?.isMember, loadMessages]);
+
+  useEffect(() => {
+    if (!recording) {
+      setRecordSecs(0);
+      return;
+    }
+    const t = setInterval(() => setRecordSecs((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [recording]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -210,7 +380,7 @@ export default function ChatsScreen() {
     if (!selected || sending || recording) return;
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
+        type: ['image/*', 'video/*', 'application/pdf', '*/*'],
         copyToCacheDirectory: true,
       });
       if (result.canceled || !result.assets?.[0]) return;
@@ -242,6 +412,20 @@ export default function ChatsScreen() {
     }
   }
 
+  async function cancelRecording() {
+    if (!recording) return;
+    discardRecordingRef.current = true;
+    try {
+      await audioRecorder.stop();
+      await setAudioModeAsync({ allowsRecording: false });
+    } catch {
+      /* ignore */
+    } finally {
+      discardRecordingRef.current = false;
+      setRecordSecs(0);
+    }
+  }
+
   async function toggleRecording() {
     if (!selected || sending) return;
 
@@ -249,6 +433,10 @@ export default function ChatsScreen() {
       try {
         await audioRecorder.stop();
         await setAudioModeAsync({ allowsRecording: false });
+        if (discardRecordingRef.current) {
+          discardRecordingRef.current = false;
+          return;
+        }
         const uri = audioRecorder.uri;
         if (!uri) return;
         setSending(true);
@@ -267,6 +455,7 @@ export default function ChatsScreen() {
         Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل إرسال التسجيل');
       } finally {
         setSending(false);
+        setRecordSecs(0);
       }
       return;
     }
@@ -288,10 +477,17 @@ export default function ChatsScreen() {
     }
   }
 
+  const memberLabel = useMemo(() => {
+    if (!selected) return '';
+    if (selected.isMember) return `${selected.membersCount} أعضاء`;
+    if (selected.myJoinRequest?.status === 'PENDING') return 'طلب قيد المراجعة';
+    return 'متاحة للانضمام';
+  }, [selected]);
+
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={PRIMARY} />
       </View>
     );
   }
@@ -305,21 +501,28 @@ export default function ChatsScreen() {
           keyboardVerticalOffset={8}
         >
           <View style={styles.chatHeader}>
-            <TouchableOpacity onPress={() => setSelected(null)}>
-              <Text style={styles.back}>رجوع</Text>
+            <TouchableOpacity style={styles.headerIconBtn} onPress={() => setSelected(null)}>
+              <Ionicons name="chevron-forward" size={22} color={PRIMARY} />
             </TouchableOpacity>
+            <View style={styles.headerAvatar}>
+              <Text style={styles.headerAvatarText}>{groupInitials(selected.name)}</Text>
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.chatTitle}>{selected.name}</Text>
+              <Text style={styles.chatTitle} numberOfLines={1}>{selected.name}</Text>
+              <Text style={styles.chatSubtitle}>{memberLabel}</Text>
             </View>
             {selected.isMember && (
-              <TouchableOpacity onPress={handleLeave}>
-                <Text style={styles.leave}>مغادرة</Text>
+              <TouchableOpacity style={styles.headerIconBtn} onPress={handleLeave}>
+                <Ionicons name="exit-outline" size={20} color={DANGER} />
               </TouchableOpacity>
             )}
           </View>
 
           {!selected.isMember ? (
             <View style={styles.center}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="chatbubbles-outline" size={36} color={PRIMARY} />
+              </View>
               <Text style={styles.hint}>
                 {selected.myJoinRequest?.status === 'PENDING'
                   ? 'طلب الانضمام قيد المراجعة'
@@ -342,54 +545,82 @@ export default function ChatsScreen() {
                 keyExtractor={(item) => String(item.id)}
                 contentContainerStyle={styles.messages}
                 onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                ListEmptyComponent={<Text style={styles.hint}>لا رسائل بعد</Text>}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
+                ListEmptyComponent={
+                  <View style={styles.emptyMessages}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={32} color="#94A3B8" />
+                    <Text style={styles.hint}>لا رسائل بعد — ابدأ المحادثة</Text>
+                  </View>
+                }
                 renderItem={({ item }) => (
                   <MessageBubble item={item} mine={item.userId === user?.id} />
                 )}
               />
-              <View style={styles.composerCol}>
+
+              {recording ? (
+                <View style={styles.recordBar}>
+                  <TouchableOpacity style={styles.recordCancel} onPress={cancelRecording}>
+                    <Ionicons name="trash-outline" size={20} color={DANGER} />
+                  </TouchableOpacity>
+                  <View style={styles.recordInfo}>
+                    <View style={styles.recordDot} />
+                    <Text style={styles.recordTimer}>{formatDuration(recordSecs)}</Text>
+                    <Text style={styles.recordHint}>جاري التسجيل...</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.recordSend}
+                    onPress={toggleRecording}
+                    disabled={sending}
+                  >
+                    {sending ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Ionicons name="send" size={18} color="#fff" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
                 <View style={styles.composer}>
+                  <Pressable
+                    style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed, (sending) && styles.disabled]}
+                    onPress={handleAttach}
+                    disabled={sending}
+                  >
+                    <Ionicons name="attach" size={22} color={PRIMARY} />
+                  </Pressable>
                   <TextInput
                     style={styles.input}
                     value={text}
                     onChangeText={setText}
                     placeholder="اكتب رسالة..."
+                    placeholderTextColor="#94A3B8"
                     textAlign="right"
                     multiline
-                    editable={!sending && !recording}
+                    editable={!sending}
                   />
-                  <TouchableOpacity
-                    style={[styles.sendBtn, (!text.trim() || sending || recording) && styles.sendDisabled]}
-                    onPress={handleSend}
-                    disabled={!text.trim() || sending || recording}
-                  >
-                    {sending && !recording ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.sendText}>إرسال</Text>
-                    )}
-                  </TouchableOpacity>
+                  {text.trim() ? (
+                    <TouchableOpacity
+                      style={[styles.sendCircle, sending && styles.disabled]}
+                      onPress={handleSend}
+                      disabled={sending}
+                    >
+                      {sending ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <Ionicons name="send" size={18} color="#fff" />
+                      )}
+                    </TouchableOpacity>
+                  ) : (
+                    <Pressable
+                      style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed, sending && styles.disabled]}
+                      onPress={toggleRecording}
+                      disabled={sending}
+                    >
+                      <Ionicons name="mic" size={22} color={PRIMARY} />
+                    </Pressable>
+                  )}
                 </View>
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, (sending || recording) && styles.sendDisabled]}
-                    onPress={handleAttach}
-                    disabled={sending || recording}
-                  >
-                    <Text style={styles.actionText}>📎 ملف</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, recording && styles.recordingBtn, sending && styles.sendDisabled]}
-                    onPress={toggleRecording}
-                    disabled={sending}
-                  >
-                    <Text style={[styles.actionText, recording && styles.recordingText]}>
-                      {recording ? '⏹ إيقاف وإرسال' : '🎙 تسجيل'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              )}
             </>
           )}
         </KeyboardAvoidingView>
@@ -399,24 +630,52 @@ export default function ChatsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.title}>المحادثات</Text>
+      <View style={styles.listHeader}>
+        <Text style={styles.title}>المحادثات</Text>
+        <Text style={styles.listSubtitle}>{groups.length} مجموعة</Text>
+      </View>
       <FlatList
         data={groups}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={<Text style={styles.hint}>لا توجد مجموعات محادثة بعد</Text>}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
+        ListEmptyComponent={
+          <View style={styles.emptyMessages}>
+            <Ionicons name="people-outline" size={36} color="#94A3B8" />
+            <Text style={styles.hint}>لا توجد مجموعات محادثة بعد</Text>
+          </View>
+        }
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => openGroup(item)}>
-            <Text style={styles.cardTitle}>{item.name}</Text>
-            {!!item.description && <Text style={styles.cardDesc}>{item.description}</Text>}
-            <Text style={styles.cardMeta}>
-              {item.isMember
-                ? `عضو · ${item.membersCount} أعضاء`
-                : item.myJoinRequest?.status === 'PENDING'
-                  ? 'طلب قيد المراجعة'
-                  : 'متاحة للانضمام'}
-            </Text>
+          <TouchableOpacity style={styles.card} onPress={() => openGroup(item)} activeOpacity={0.75}>
+            <View style={styles.cardRow}>
+              <View style={styles.cardAvatar}>
+                <Text style={styles.cardAvatarText}>{groupInitials(item.name)}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                {!!item.description && (
+                  <Text style={styles.cardDesc} numberOfLines={1}>{item.description}</Text>
+                )}
+                <View style={styles.cardMetaRow}>
+                  <View style={[
+                    styles.badge,
+                    item.isMember ? styles.badgeMember : styles.badgeGuest,
+                  ]}>
+                    <Text style={[
+                      styles.badgeText,
+                      item.isMember ? styles.badgeTextMember : styles.badgeTextGuest,
+                    ]}>
+                      {item.isMember
+                        ? `عضو · ${item.membersCount}`
+                        : item.myJoinRequest?.status === 'PENDING'
+                          ? 'قيد المراجعة'
+                          : 'متاحة'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <Ionicons name="chevron-back" size={18} color="#94A3B8" />
+            </View>
             {!item.isMember && item.canJoin && !isDependent && (
               <TouchableOpacity
                 style={styles.joinBtnSmall}
@@ -433,114 +692,280 @@ export default function ChatsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f1f5f9' },
+  container: { flex: 1, backgroundColor: BG },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  title: { fontSize: 22, fontWeight: '700', textAlign: 'right', padding: 16, paddingBottom: 8 },
-  list: { padding: 16, paddingTop: 8 },
+  listHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  title: { fontSize: 26, fontWeight: '800', textAlign: 'right', color: '#0F172A' },
+  listSubtitle: { textAlign: 'right', color: MUTED, marginTop: 2, fontSize: 13 },
+  list: { padding: 16, paddingTop: 10 },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: SURFACE,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', textAlign: 'right' },
-  cardDesc: { color: '#64748b', textAlign: 'right', marginTop: 4, fontSize: 13 },
-  cardMeta: { color: '#2563eb', textAlign: 'right', marginTop: 8, fontSize: 12, fontWeight: '600' },
-  hint: { textAlign: 'center', color: '#64748b', marginTop: 24 },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cardAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: Brand.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardAvatarText: { color: PRIMARY_DARK, fontWeight: '800', fontSize: 15 },
+  cardTitle: { fontSize: 16, fontWeight: '700', textAlign: 'right', color: '#0F172A' },
+  cardDesc: { color: MUTED, textAlign: 'right', marginTop: 3, fontSize: 13 },
+  cardMetaRow: { marginTop: 8, alignItems: 'flex-end' },
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  badgeMember: { backgroundColor: Brand.primarySoft },
+  badgeGuest: { backgroundColor: '#F1F5F9' },
+  badgeText: { fontSize: 11, fontWeight: '700' },
+  badgeTextMember: { color: PRIMARY_DARK },
+  badgeTextGuest: { color: MUTED },
+  hint: { textAlign: 'center', color: MUTED, marginTop: 12, lineHeight: 20 },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Brand.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptyMessages: { alignItems: 'center', paddingTop: 48 },
   joinBtn: {
     marginTop: 16,
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    paddingHorizontal: 20,
+    backgroundColor: PRIMARY,
+    borderRadius: 12,
+    paddingHorizontal: 24,
     paddingVertical: 12,
   },
   joinBtnSmall: {
-    marginTop: 10,
+    marginTop: 12,
     alignSelf: 'flex-end',
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    backgroundColor: PRIMARY,
+    borderRadius: 10,
+    paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  joinBtnText: { color: '#fff', fontWeight: '600' },
+  joinBtnText: { color: '#fff', fontWeight: '700' },
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 10,
+    backgroundColor: SURFACE,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: BORDER,
   },
-  back: { color: '#2563eb', fontWeight: '600' },
-  leave: { color: '#dc2626', fontWeight: '600' },
-  chatTitle: { fontWeight: '700', fontSize: 16, textAlign: 'right' },
-  messages: { padding: 16, paddingBottom: 8 },
-  bubbleWrap: { marginBottom: 10 },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Brand.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatarText: { color: PRIMARY_DARK, fontWeight: '800' },
+  chatTitle: { fontWeight: '700', fontSize: 16, textAlign: 'right', color: '#0F172A' },
+  chatSubtitle: { fontSize: 12, color: MUTED, textAlign: 'right', marginTop: 1 },
+  messages: { padding: 14, paddingBottom: 10, flexGrow: 1 },
+  bubbleWrap: { marginBottom: 12 },
   mineWrap: { alignItems: 'flex-start' },
   theirWrap: { alignItems: 'flex-end' },
-  bubble: { maxWidth: '80%', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
-  mine: { backgroundColor: '#2563eb' },
-  their: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0' },
-  sender: { fontSize: 11, color: '#64748b', marginBottom: 2, textAlign: 'right' },
-  body: { fontSize: 15, color: '#0f172a', textAlign: 'right' },
-  mineBody: { color: '#fff' },
-  link: { fontSize: 15, color: '#0f172a', textDecorationLine: 'underline', textAlign: 'right' },
-  image: { width: 200, height: 160, borderRadius: 8 },
-  time: { fontSize: 10, color: '#94a3b8', marginTop: 4, textAlign: 'left' },
-  mineTime: { color: 'rgba(255,255,255,0.7)' },
-  composerCol: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingBottom: 8,
+  bubble: {
+    maxWidth: '82%',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
+  mine: {
+    backgroundColor: PRIMARY,
+    borderBottomLeftRadius: 6,
+  },
+  their: {
+    backgroundColor: SURFACE,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderBottomRightRadius: 6,
+  },
+  sender: { fontSize: 11, color: MUTED, marginBottom: 4, textAlign: 'right', fontWeight: '600' },
+  body: { fontSize: 15, color: '#0F172A', textAlign: 'right', lineHeight: 22 },
+  mineBody: { color: '#fff' },
+  mineMeta: { color: 'rgba(255,255,255,0.75)' },
+  mediaBlock: { gap: 6 },
+  image: { width: 220, height: 170, borderRadius: 12, backgroundColor: '#0F172A10' },
+  video: {
+    width: 240,
+    height: 180,
+    borderRadius: 12,
+    backgroundColor: '#000',
+    overflow: 'hidden',
+  },
+  pdfFrame: {
+    width: 240,
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  pdfWeb: { flex: 1, backgroundColor: '#fff' },
+  pdfLoading: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  fileLink: {
+    fontSize: 12,
+    color: PRIMARY,
+    textDecorationLine: 'underline',
+    textAlign: 'right',
+  },
+  fileLinkMine: { color: 'rgba(255,255,255,0.92)' },
+  fileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 200,
+    paddingVertical: 4,
+  },
+  fileCardMine: {},
+  fileIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Brand.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fileIconWrapMine: { backgroundColor: 'rgba(255,255,255,0.2)' },
+  fileName: { fontSize: 14, fontWeight: '600', textAlign: 'right', color: '#0F172A' },
+  fileMeta: { fontSize: 11, color: MUTED, textAlign: 'right', marginTop: 2 },
+  audioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 150,
+  },
+  audioRowMine: {},
+  audioIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  audioIconMine: { backgroundColor: '#fff' },
+  time: { fontSize: 10, color: '#94A3B8', marginTop: 6, textAlign: 'left' },
+  mineTime: { color: 'rgba(255,255,255,0.7)' },
   composer: {
     flexDirection: 'row',
-    gap: 8,
-    padding: 12,
-    paddingBottom: 8,
     alignItems: 'flex-end',
-  },
-  actions: {
-    flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 12,
-    justifyContent: 'flex-end',
+    paddingVertical: 10,
+    backgroundColor: SURFACE,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
   },
-  actionBtn: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#f8fafc',
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: Brand.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  recordingBtn: {
-    borderColor: '#dc2626',
-    backgroundColor: '#fef2f2',
-  },
-  actionText: { color: '#0f172a', fontWeight: '600', fontSize: 13 },
-  recordingText: { color: '#dc2626' },
+  iconBtnPressed: { opacity: 0.7 },
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    maxHeight: 100,
-    fontSize: 15,
-  },
-  sendBtn: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
+    borderColor: BORDER,
+    borderRadius: 22,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    minWidth: 64,
-    alignItems: 'center',
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    maxHeight: 110,
+    fontSize: 15,
+    backgroundColor: '#F8FAFC',
+    color: '#0F172A',
   },
-  sendDisabled: { opacity: 0.5 },
-  sendText: { color: '#fff', fontWeight: '600' },
+  sendCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabled: { opacity: 0.45 },
+  recordBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: SURFACE,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  recordCancel: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  recordDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: DANGER,
+  },
+  recordTimer: { fontWeight: '800', color: DANGER, fontVariant: ['tabular-nums'] },
+  recordHint: { color: MUTED, fontSize: 13 },
+  recordSend: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

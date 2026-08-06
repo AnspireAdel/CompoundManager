@@ -33,6 +33,7 @@ export default function ProfileScreen() {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [depForm, setDepForm] = useState({ name: '', relation: 'زوج', mobile: '', email: '' });
+  const [depPreviewUsername, setDepPreviewUsername] = useState('');
   const [editingDepId, setEditingDepId] = useState<number | null>(null);
   const [savingDep, setSavingDep] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -79,7 +80,12 @@ export default function ProfileScreen() {
         }
       }
       if (me.role === 'OWNER') {
-        setDependents(await api.getDependents());
+        const [deps, suggested] = await Promise.all([
+          api.getDependents(),
+          api.getSuggestedUsername(),
+        ]);
+        setDependents(deps);
+        setDepPreviewUsername(suggested.username);
       }
     } catch (e) {
       Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل التحميل');
@@ -137,24 +143,25 @@ export default function ProfileScreen() {
         mobile: depForm.mobile.trim(),
         email: depForm.email.trim(),
       };
-      const wasEdit = editingDepId != null;
       if (editingDepId) {
         await api.updateDependent(editingDepId, {
           ...payload,
           email: payload.email || null,
         });
+        Alert.alert('تم', 'تم تحديث التابع');
       } else {
+        const assignedUsername = depPreviewUsername;
         await api.createDependent(payload);
+        const suggested = await api.getSuggestedUsername();
+        setDepPreviewUsername(suggested.username);
+        Alert.alert(
+          'تم',
+          `تم إضافة التابع — اسم المستخدم: ${assignedUsername} — كلمة المرور الافتراضية 123`
+        );
       }
       setDependents(await api.getDependents());
       setEditingDepId(null);
       setDepForm({ name: '', relation: 'زوج', mobile: '', email: '' });
-      Alert.alert(
-        'تم',
-        wasEdit
-          ? 'تم تحديث التابع'
-          : 'تم إضافة التابع — كلمة المرور الافتراضية 123'
-      );
     } catch (e) {
       Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل الحفظ');
     } finally {
@@ -394,8 +401,7 @@ export default function ProfileScreen() {
           {isOwner && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>التابعون</Text>
-              <Text style={styles.hint}>البريد مطلوب — كلمة المرور الافتراضية 123 عند الإضافة</Text>
-              <Text style={styles.hint}>للتسجيل فقط — بدون إمكانية دخول النظام</Text>
+              <Text style={styles.hint}>البريد مطلوب — اسم المستخدم يُعيَّن تلقائياً — كلمة المرور الافتراضية 123</Text>
 
               <Text style={styles.label}>الاسم</Text>
               <TextInput style={styles.input} value={depForm.name} onChangeText={(v) => setDepForm({ ...depForm, name: v })} textAlign="right" />
@@ -415,6 +421,18 @@ export default function ProfileScreen() {
               <TextInput style={styles.input} value={depForm.mobile} onChangeText={(v) => setDepForm({ ...depForm, mobile: v })} keyboardType="phone-pad" textAlign="right" />
               <Text style={styles.label}>البريد</Text>
               <TextInput style={styles.input} value={depForm.email} onChangeText={(v) => setDepForm({ ...depForm, email: v })} autoCapitalize="none" keyboardType="email-address" textAlign="right" />
+              <Text style={styles.label}>اسم المستخدم</Text>
+              <TextInput
+                style={[styles.input, styles.inputDisabled]}
+                value={editingDepId
+                  ? (dependents.find((d) => d.id === editingDepId)?.user?.username || '—')
+                  : depPreviewUsername}
+                editable={false}
+                textAlign="right"
+              />
+              {!editingDepId && (
+                <Text style={styles.hint}>يُعيَّن تلقائياً — يُطلب من التابع تغييره عند أول دخول</Text>
+              )}
               <TouchableOpacity style={styles.saveBtn} onPress={handleSaveDependent} disabled={savingDep}>
                 {savingDep ? <ActivityIndicator color="#fff" /> : (
                   <Text style={styles.saveBtnText}>{editingDepId ? 'حفظ التعديل' : 'إضافة تابع'}</Text>
@@ -437,6 +455,7 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.depName}>{d.name}</Text>
                     <Text style={styles.depMeta}>{d.relation} · {d.mobile}</Text>
+                    {!!d.user?.username && <Text style={styles.depMeta}>@{d.user.username}</Text>}
                     {!!d.email && <Text style={styles.depMeta}>{d.email}</Text>}
                   </View>
                   <TouchableOpacity onPress={() => startEditDependent(d)}>
@@ -492,6 +511,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12, textAlign: 'right' },
   label: { fontWeight: '600', marginBottom: 6, marginTop: 8, textAlign: 'right', fontSize: 14 },
   input: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 4, backgroundColor: '#fff' },
+  inputDisabled: { backgroundColor: '#f1f5f9', color: '#64748b' },
   readonly: { backgroundColor: '#f1f5f9', color: '#94a3b8' },
   passwordWrap: { marginBottom: 4 },
   saveBtn: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 },

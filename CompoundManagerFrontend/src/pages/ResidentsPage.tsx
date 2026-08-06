@@ -44,6 +44,7 @@ export default function ResidentsPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [depForm, setDepForm] = useState({ name: '', relation: 'زوج', mobile: '', email: '' });
+  const [depPreviewUsername, setDepPreviewUsername] = useState('');
   const [savingDep, setSavingDep] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -110,6 +111,7 @@ export default function ResidentsPage() {
     setMessage('');
     setDepForm({ name: '', relation: 'زوج', mobile: '', email: '' });
     setPreviewUsername(r.user?.username || '');
+    api.getSuggestedUsername().then((s) => setDepPreviewUsername(s.username)).catch(console.error);
     setShowForm(true);
     try {
       setDependents(await api.getDependents(r.id));
@@ -202,9 +204,11 @@ export default function ResidentsPage() {
         mobile: depForm.mobile.trim(),
         email: depForm.email.trim(),
       });
+      const assignedUsername = depPreviewUsername;
       setDepForm({ name: '', relation: 'زوج', mobile: '', email: '' });
       setDependents(await api.getDependents(editingId));
-      setMessage('تم إضافة التابع — كلمة المرور الافتراضية 123 (يُطلب تغييرها عند أول دخول)');
+      api.getSuggestedUsername().then((s) => setDepPreviewUsername(s.username)).catch(console.error);
+      setMessage(`تم إضافة التابع — اسم المستخدم: ${assignedUsername} — كلمة المرور الافتراضية 123 (يُطلب تغييرها عند أول دخول)`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'فشل إضافة التابع');
     } finally {
@@ -381,9 +385,10 @@ export default function ResidentsPage() {
                 <div className="space-y-3 rounded-md border p-4">
                   <div className="text-sm font-medium">التابعون (دخول عبر التطبيق)</div>
                   <p className="text-xs text-muted-foreground">
-                    البريد مطلوب. كلمة المرور الافتراضية <span className="font-mono">123</span> ويُطلب تغييرها عند أول تسجيل دخول.
+                    البريد مطلوب. اسم المستخدم يُعيَّن تلقائياً (<span className="font-mono">{depPreviewUsername || '…'}</span>).
+                    كلمة المرور الافتراضية <span className="font-mono">123</span> ويُطلب تغييرها عند أول تسجيل دخول.
                   </p>
-                  <div className="grid gap-2 sm:grid-cols-4">
+                  <div className="grid gap-2 sm:grid-cols-5">
                     <Input
                       placeholder="الاسم"
                       value={depForm.name}
@@ -403,10 +408,16 @@ export default function ResidentsPage() {
                       onChange={(e) => setDepForm({ ...depForm, mobile: e.target.value })}
                     />
                     <Input
-                      placeholder="البريد (مطلوب عند الإضافة)"
+                      placeholder="البريد (مطلوب)"
                       type="email"
                       value={depForm.email}
                       onChange={(e) => setDepForm({ ...depForm, email: e.target.value })}
+                    />
+                    <Input
+                      placeholder="اسم المستخدم"
+                      value={depPreviewUsername}
+                      readOnly
+                      disabled
                     />
                   </div>
                   <Button
@@ -425,6 +436,7 @@ export default function ResidentsPage() {
                           <TableHead>الاسم</TableHead>
                           <TableHead>صلة القرابة</TableHead>
                           <TableHead>الموبايل</TableHead>
+                          <TableHead>اسم المستخدم</TableHead>
                           <TableHead>البريد</TableHead>
                           <TableHead />
                         </TableRow>
@@ -435,6 +447,7 @@ export default function ResidentsPage() {
                             <TableCell>{d.name}</TableCell>
                             <TableCell>{d.relation}</TableCell>
                             <TableCell>{d.mobile}</TableCell>
+                            <TableCell>{d.user?.username || '—'}</TableCell>
                             <TableCell>{d.email || '—'}</TableCell>
                             <TableCell>
                               <div className="flex flex-wrap items-center gap-2">

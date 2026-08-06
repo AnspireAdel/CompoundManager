@@ -75,6 +75,7 @@ export interface Dependent {
   relation: string;
   mobile: string;
   email?: string | null;
+  user?: { id: number; email: string; username?: string; mustChangePassword?: boolean; mustChangeUsername?: boolean; status?: string } | null;
 }
 
 export interface ChatUserRef {
@@ -350,6 +351,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  getSuggestedUsername: () => request<{ username: string }>('/auth/suggested-username'),
 
   getDependents: () => request<Dependent[]>('/dependents'),
 

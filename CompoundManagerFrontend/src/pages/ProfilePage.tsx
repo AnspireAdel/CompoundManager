@@ -48,6 +48,7 @@ export default function ProfilePage() {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [depForm, setDepForm] = useState({ name: '', relation: 'زوج', mobile: '', email: '' });
+  const [depPreviewUsername, setDepPreviewUsername] = useState('');
   const [editingDepId, setEditingDepId] = useState<number | null>(null);
   const [savingDep, setSavingDep] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -76,8 +77,13 @@ export default function ProfilePage() {
     setIsServiceProvider(Boolean(me.resident?.isServiceProvider));
 
     if (me.role === 'OWNER') {
-      const [mine, deps] = await Promise.all([api.getMyServices(), api.getDependents()]);
+      const [mine, deps, suggested] = await Promise.all([
+        api.getMyServices(),
+        api.getDependents(),
+        api.getSuggestedUsername(),
+      ]);
       setDependents(deps);
+      setDepPreviewUsername(suggested.username);
       setIsServiceProvider(mine.isServiceProvider);
       if (mine.service) {
         setServiceForm({
@@ -208,6 +214,7 @@ export default function ProfilePage() {
   function resetDepForm() {
     setEditingDepId(null);
     setDepForm({ name: '', relation: 'زوج', mobile: '', email: '' });
+    api.getSuggestedUsername().then((r) => setDepPreviewUsername(r.username)).catch(console.error);
   }
 
   function startEditDep(d: Dependent) {
@@ -236,8 +243,17 @@ export default function ProfilePage() {
         await api.updateDependent(editingDepId, payload);
         setMessage('تم تحديث بيانات التابع');
       } else {
-        await api.createDependent(payload);
-        setMessage('تم إضافة التابع');
+        if (!depForm.email.trim()) {
+          setError('البريد الإلكتروني مطلوب لإنشاء حساب دخول للتابع');
+          return;
+        }
+        await api.createDependent({
+          name: payload.name,
+          relation: payload.relation,
+          mobile: payload.mobile,
+          email: depForm.email.trim(),
+        });
+        setMessage(`تم إضافة التابع — اسم المستخدم: ${depPreviewUsername} — كلمة المرور الافتراضية 123`);
       }
       resetDepForm();
       setDependents(await api.getDependents());
@@ -456,7 +472,7 @@ export default function ProfilePage() {
           <CardHeader>
             <CardTitle>التابعون</CardTitle>
             <CardDescription>
-              أفراد مرتبطون بوحدتك للتسجيل فقط — بدون إمكانية تسجيل الدخول للنظام.
+              أفراد مرتبطون بوحدتك — يمكنهم تسجيل الدخول عبر تطبيق الموبايل باسم المستخدم وكلمة المرور.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -492,9 +508,24 @@ export default function ProfilePage() {
                     type="email"
                     value={depForm.email}
                     onChange={(e) => setDepForm({ ...depForm, email: e.target.value })}
+                    required={!editingDepId}
+                  />
+                </FormField>
+                <FormField label="اسم المستخدم">
+                  <Input
+                    value={editingDepId
+                      ? (dependents.find((d) => d.id === editingDepId)?.user?.username || '—')
+                      : depPreviewUsername}
+                    readOnly
+                    disabled
                   />
                 </FormField>
               </FormRow>
+              {!editingDepId && (
+                <p className="text-xs text-muted-foreground">
+                  يُعيَّن تلقائياً — يُطلب من التابع تغييره عند أول تسجيل دخول. كلمة المرور الافتراضية: 123
+                </p>
+              )}
               <div className="flex gap-2">
                 <Button type="submit" disabled={savingDep}>
                   {savingDep ? 'جاري الحفظ...' : editingDepId ? 'حفظ التعديل' : 'إضافة تابع'}
@@ -513,6 +544,7 @@ export default function ProfilePage() {
                   <TableHead>الاسم</TableHead>
                   <TableHead>صلة القرابة</TableHead>
                   <TableHead>الموبايل</TableHead>
+                  <TableHead>اسم المستخدم</TableHead>
                   <TableHead>البريد</TableHead>
                   <TableHead />
                 </TableRow>
@@ -523,6 +555,7 @@ export default function ProfilePage() {
                     <TableCell>{d.name}</TableCell>
                     <TableCell>{d.relation}</TableCell>
                     <TableCell>{d.mobile}</TableCell>
+                    <TableCell>{d.user?.username || '—'}</TableCell>
                     <TableCell>{d.email || '—'}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">

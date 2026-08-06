@@ -277,6 +277,7 @@ router.post('/:id/reset-password', async (req, res) => {
 
   res.json({
     message: `تم إعادة تعيين كلمة المرور إلى ${DEFAULT_TEMP_PASSWORD}. سيُطلب تغييرها عند تسجيل الدخول التالي.`,
+    username: existing.user?.username || null,
   });
 });
 

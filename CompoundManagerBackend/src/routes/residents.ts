@@ -6,6 +6,7 @@ import { authenticate, authorize, ADMIN_ROLES, STAFF_ROLES, isResidentUser } fro
 import { getResidentBalance } from '../services/billService';
 import { resolveUnitNumbers } from '../lib/unitFields';
 import { normalizePassword, tryNormalizePassword } from '../lib/password';
+import { allocateNextSequentialUsername } from '../lib/username';
 
 const router = Router();
 
@@ -68,7 +69,7 @@ router.get('/', authorize(...STAFF_ROLES), async (req, res) => {
       unitType: true,
       users: {
         where: { role: 'OWNER' },
-        select: { id: true, email: true, mustChangePassword: true },
+        select: { id: true, email: true, username: true, mustChangePassword: true, mustChangeUsername: true },
         take: 1,
       },
     },
@@ -152,6 +153,11 @@ router.put('/me', authorize('OWNER'), async (req, res) => {
   res.json({ resident: { ...withoutNotes(resident), balance }, user });
 });
 
+router.get('/next-username', authorize(...STAFF_ROLES), async (_req, res) => {
+  const username = await allocateNextSequentialUsername();
+  res.json({ username });
+});
+
 router.get('/:id', async (req, res) => {
   const id = parseInt(String(req.params.id));
   if (isResidentUser(req.user?.role) && req.user.residentId !== id) {
@@ -209,8 +215,10 @@ router.post('/', authorize(...STAFF_ROLES), async (req, res) => {
     const plain = password ? tryNormalizePassword(password) : { ok: true as const, value: normalizePassword('123') };
     if (!plain.ok) return res.status(400).json({ error: plain.error });
     const hashed = await bcrypt.hash(plain.value, 10);
+    const username = await allocateNextSequentialUsername();
     await prisma.user.create({
       data: {
+        username,
         email: data.email,
         password: hashed,
         name: data.residentName,
@@ -218,6 +226,7 @@ router.post('/', authorize(...STAFF_ROLES), async (req, res) => {
         status: 'APPROVED',
         residentId: resident.id,
         mustChangePassword: true,
+        mustChangeUsername: true,
       },
     });
   }
@@ -340,8 +349,10 @@ router.put('/:id', authorize(...STAFF_ROLES), async (req, res) => {
     }
   } else if (data.email) {
     const hashed = await bcrypt.hash(normalizePassword('123'), 10);
+    const username = await allocateNextSequentialUsername();
     await prisma.user.create({
       data: {
+        username,
         email: data.email,
         password: hashed,
         name: data.residentName || resident.residentName,
@@ -349,6 +360,7 @@ router.put('/:id', authorize(...STAFF_ROLES), async (req, res) => {
         status: 'APPROVED',
         residentId: resident.id,
         mustChangePassword: true,
+        mustChangeUsername: true,
       },
     });
   }
@@ -381,8 +393,10 @@ router.post('/:id/reset-password', authorize(...STAFF_ROLES), async (req, res) =
       },
     });
   } else if (resident.email) {
+    const username = await allocateNextSequentialUsername();
     await prisma.user.create({
       data: {
+        username,
         email: resident.email,
         password: hashed,
         name: resident.residentName,
@@ -390,6 +404,7 @@ router.post('/:id/reset-password', authorize(...STAFF_ROLES), async (req, res) =
         status: 'APPROVED',
         residentId: resident.id,
         mustChangePassword: true,
+        mustChangeUsername: true,
       },
     });
   } else {

@@ -11,7 +11,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
   const [form, setForm] = useState({
-    name: '', email: '', password: '', confirmPassword: '', mobile: '',
+    username: '', name: '', email: '', password: '', confirmPassword: '', mobile: '',
     area: '', buildingNo: '', floorNo: '1', apartmentNo: '1',
     residentType: 'O' as 'O' | 'T',
     unitTypeId: 0,
@@ -19,10 +19,16 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.getUnitTypes().then((types) => {
-      setUnitTypes(types);
-      if (types[0]) setForm((f) => ({ ...f, unitTypeId: types[0].id }));
-    }).catch(console.error);
+    Promise.all([api.getUnitTypes(), api.getSuggestedUsername()])
+      .then(([types, suggested]) => {
+        setUnitTypes(types);
+        setForm((f) => ({
+          ...f,
+          unitTypeId: types[0]?.id ?? f.unitTypeId,
+          username: f.username || suggested.username,
+        }));
+      })
+      .catch(console.error);
   }, []);
 
   const selectedType = unitTypes.find((t) => t.id === form.unitTypeId);
@@ -54,6 +60,7 @@ export default function RegisterScreen() {
   }
 
   const fields: Array<[Exclude<keyof typeof form, 'residentType' | 'unitTypeId' | 'floorNo' | 'apartmentNo'>, string, boolean?]> = [
+    ['username', 'اسم المستخدم'],
     ['name', 'الاسم'],
     ['email', 'البريد الإلكتروني'],
     ['password', 'كلمة المرور', true],
@@ -115,6 +122,9 @@ export default function RegisterScreen() {
           {fields.map(([key, label, isPassword]) => (
             <View key={key}>
               <Text style={styles.label}>{label}</Text>
+              {key === 'username' ? (
+                <Text style={styles.usernameHint}>مقترح تلقائياً — يمكنك تغييره</Text>
+              ) : null}
               {isPassword ? (
                 <PasswordInput
                   value={form[key]}
@@ -128,7 +138,7 @@ export default function RegisterScreen() {
                   onChangeText={(v) => setForm({ ...form, [key]: v })}
                   keyboardType={key === 'email' ? 'email-address' : 'default'}
                   autoCapitalize="none"
-                  maxLength={key === 'buildingNo' ? 5 : key === 'area' ? 3 : undefined}
+                  maxLength={key === 'buildingNo' ? 5 : key === 'area' ? 3 : key === 'username' ? 32 : undefined}
                   textAlign="right"
                 />
               )}
@@ -180,6 +190,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
   subtitle: { textAlign: 'center', color: '#64748b', marginBottom: 20, marginTop: 4 },
   label: { fontWeight: '600', marginBottom: 6, textAlign: 'right' },
+  usernameHint: { textAlign: 'right', color: '#64748b', fontSize: 12, marginBottom: 6 },
   typeRow: { flexDirection: 'row-reverse', gap: 10, marginBottom: 14 },
   typeBtn: {
     flex: 1,

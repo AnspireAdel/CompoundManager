@@ -11,10 +11,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   if (!user) return <Navigate to="/login" replace />;
 
   const onForceChange = location.pathname === '/force-change-password';
-  if (user.mustChangePassword && !onForceChange) {
+  const needsSetup = Boolean(user.mustChangePassword || user.mustChangeUsername);
+  if (needsSetup && !onForceChange) {
     return <Navigate to="/force-change-password" replace />;
   }
-  if (!user.mustChangePassword && onForceChange) {
+  if (!needsSetup && onForceChange) {
     return <Navigate to="/" replace />;
   }
 

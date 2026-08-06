@@ -20,7 +20,7 @@ export default function ProfileScreen() {
   const { user, refreshUser } = useAuth();
   const isOwner = user?.role === 'OWNER';
   const isResident = user?.role === 'OWNER' || user?.role === 'DEPENDENT';
-  const [form, setForm] = useState({ name: '', email: '', mobile: '', landLine: '', nationality: '' });
+  const [form, setForm] = useState({ username: '', name: '', email: '', mobile: '', landLine: '', nationality: '' });
   const [resident, setResident] = useState<Partial<Resident> | null>(null);
   const [serviceForm, setServiceForm] = useState({
     serviceType: '',
@@ -48,6 +48,7 @@ export default function ProfileScreen() {
       if (!me) return;
       setServiceTypes(types);
       setForm({
+        username: me.username || '',
         name: me.name || '',
         email: me.email || '',
         mobile: me.role === 'DEPENDENT'
@@ -103,6 +104,7 @@ export default function ProfileScreen() {
     setSaving(true);
     try {
       await api.updateProfile({
+        username: form.username,
         name: form.name,
         email: form.email,
         mobile: form.mobile || undefined,
@@ -327,6 +329,8 @@ export default function ProfileScreen() {
             <Text style={styles.sectionTitle}>البيانات</Text>
             <Text style={styles.label}>الاسم</Text>
             <TextInput style={styles.input} value={form.name} onChangeText={(v) => setForm({ ...form, name: v })} textAlign="right" />
+            <Text style={styles.label}>اسم المستخدم</Text>
+            <TextInput style={styles.input} value={form.username} onChangeText={(v) => setForm({ ...form, username: v })} autoCapitalize="none" textAlign="right" />
             <Text style={styles.label}>البريد</Text>
             <TextInput style={styles.input} value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} autoCapitalize="none" textAlign="right" />
             {(isOwner || user?.role === 'DEPENDENT') && (

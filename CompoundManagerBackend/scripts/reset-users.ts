@@ -43,6 +43,7 @@ async function main() {
 
   await prisma.user.create({
     data: {
+      username: '00001',
       email: 'superadmin@gmail.com',
       password: saHash,
       name: 'SuperAdmin',
@@ -54,6 +55,7 @@ async function main() {
 
   await prisma.user.create({
     data: {
+      username: '00002',
       email: 'admin@gmail.com',
       password: adminHash,
       name: 'Admin',
@@ -65,6 +67,7 @@ async function main() {
 
   await prisma.user.create({
     data: {
+      username: '00003',
       email: 'acc@gmail.com',
       password: accHash,
       name: 'Accountant',
@@ -109,6 +112,7 @@ async function main() {
 
   await prisma.user.create({
     data: {
+      username: '00004',
       email: 'nagy.tharwat@gmail.com',
       password: ownerHash,
       name: 'ناجي ثروت',
@@ -129,11 +133,11 @@ async function main() {
   };
 
   console.log('Done. Counts:', counts);
-  console.log('Logins:');
-  console.log('  SuperAdmin  superadmin@gmail.com / sa123');
-  console.log('  Admin       admin@gmail.com / admin123');
-  console.log('  Accountant  acc@gmail.com / acc123');
-  console.log('  Owner       nagy.tharwat@gmail.com / 123456');
+  console.log('Logins (username / password):');
+  console.log('  SuperAdmin  00001 / sa123');
+  console.log('  Admin       00002 / admin123');
+  console.log('  Accountant  00003 / acc123');
+  console.log('  Owner       00004 / 123456');
 }
 
 main()

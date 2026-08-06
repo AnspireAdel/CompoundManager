@@ -6,6 +6,7 @@ import { authenticate, authorize, ADMIN_ROLES, STAFF_ROLES } from '../middleware
 import { createNotification } from '../services/notificationService';
 import { resolveUnitNumbers } from '../lib/unitFields';
 import { tryNormalizePassword } from '../lib/password';
+import { allocateNextSequentialUsername } from '../lib/username';
 
 const router = Router();
 
@@ -246,14 +247,17 @@ router.post('/', authorize(...ADMIN_ROLES), async (req, res) => {
   const pw = tryNormalizePassword(password);
   if (!pw.ok) return res.status(400).json({ error: pw.error });
   const hashed = await bcrypt.hash(pw.value, 10);
+  const username = await allocateNextSequentialUsername();
   const user = await prisma.user.create({
     data: {
+      username,
       email,
       password: hashed,
       name,
       role,
       residentId,
       status: status || 'APPROVED',
+      mustChangeUsername: true,
     },
   });
   const { password: _, resetToken, ...safe } = user;

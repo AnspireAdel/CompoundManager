@@ -15,6 +15,7 @@ async function main() {
     where: { email: 'superadmin@compound.com' },
     update: { status: 'APPROVED', role: 'SUPERADMIN' },
     create: {
+      username: '00001',
       email: 'superadmin@compound.com',
       password: superAdminPassword,
       name: 'المدير الأعلى',
@@ -27,6 +28,7 @@ async function main() {
     where: { email: 'admin@compound.com' },
     update: { status: 'APPROVED' },
     create: {
+      username: '00002',
       email: 'admin@compound.com',
       password: adminPassword,
       name: 'مدير النظام',
@@ -39,6 +41,7 @@ async function main() {
     where: { email: 'accountant@compound.com' },
     update: { status: 'APPROVED' },
     create: {
+      username: '00003',
       email: 'accountant@compound.com',
       password: accountantPassword,
       name: 'المحاسب',
@@ -87,6 +90,7 @@ async function main() {
     { area: 'B', buildingNo: '01', floorNo: 3, apartmentNo: '10', residentName: 'سارة إبراهيم', mobile: '01234567890', email: 'sara@example.com', monthlyFees: 500, unitTypeId: apartmentType?.id },
   ];
 
+  let ownerUsernameSeq = 4;
   for (const r of residents) {
     const resident = await prisma.resident.upsert({
       where: {
@@ -107,10 +111,12 @@ async function main() {
     });
 
     if (r.email) {
+      const username = String(ownerUsernameSeq++).padStart(5, '0');
       await prisma.user.upsert({
         where: { email: r.email },
         update: { status: 'APPROVED' },
         create: {
+          username,
           email: r.email,
           password: ownerPassword,
           name: r.residentName,
@@ -210,11 +216,11 @@ async function main() {
   }
 
   console.log('Seed completed successfully');
-  console.log('Login credentials:');
-  console.log('  Superadmin: superadmin@compound.com / superadmin123');
-  console.log('  Admin:      admin@compound.com / admin123');
-  console.log('  Accountant: accountant@compound.com / accountant123');
-  console.log('  Owner:      ahmed@example.com / 123456');
+  console.log('Login credentials (username / password):');
+  console.log('  Superadmin: 00001 / superadmin123');
+  console.log('  Admin:      00002 / admin123');
+  console.log('  Accountant: 00003 / accountant123');
+  console.log('  Owner:      00004 / 123456');
 }
 
 main()

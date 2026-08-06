@@ -15,7 +15,7 @@ import {
   Image,
   Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,15 +31,15 @@ import {
 } from 'expo-audio';
 import { api, ChatGroupSummary, ChatMessage, resolveUploadUrl } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
-import { Brand } from '@/constants/theme';
+import { BottomTabInset } from '@/constants/theme';
 
-const PRIMARY = Brand.primary;
-const PRIMARY_DARK = Brand.primaryDark;
-const BG = Brand.background;
-const SURFACE = Brand.surface;
-const MUTED = Brand.muted;
-const BORDER = Brand.border;
-const DANGER = Brand.danger;
+const PRIMARY = '#208AEF';
+const PRIMARY_DARK = '#1a6fc0';
+const BG = '#EEF3F8';
+const SURFACE = '#FFFFFF';
+const MUTED = '#64748B';
+const BORDER = '#E2E8F0';
+const DANGER = '#DC2626';
 
 function formatBytes(n?: number | null) {
   if (!n) return '';
@@ -244,6 +244,8 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
 
 export default function ChatsScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const tabPad = BottomTabInset + Math.max(insets.bottom, 0);
   const isDependent = user?.role === 'DEPENDENT';
   const [groups, setGroups] = useState<ChatGroupSummary[]>([]);
   const [selected, setSelected] = useState<ChatGroupSummary | null>(null);
@@ -558,7 +560,7 @@ export default function ChatsScreen() {
               />
 
               {recording ? (
-                <View style={styles.recordBar}>
+                <View style={[styles.recordBar, { paddingBottom: 12 + tabPad }]}>
                   <TouchableOpacity style={styles.recordCancel} onPress={cancelRecording}>
                     <Ionicons name="trash-outline" size={20} color={DANGER} />
                   </TouchableOpacity>
@@ -580,7 +582,7 @@ export default function ChatsScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <View style={styles.composer}>
+                <View style={[styles.composer, { paddingBottom: 10 + tabPad }]}>
                   <Pressable
                     style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed, (sending) && styles.disabled]}
                     onPress={handleAttach}
@@ -637,7 +639,7 @@ export default function ChatsScreen() {
       <FlatList
         data={groups}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 24 + tabPad }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
         ListEmptyComponent={
           <View style={styles.emptyMessages}>
@@ -720,7 +722,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: Brand.primarySoft,
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -733,7 +735,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  badgeMember: { backgroundColor: Brand.primarySoft },
+  badgeMember: { backgroundColor: '#DBEAFE' },
   badgeGuest: { backgroundColor: '#F1F5F9' },
   badgeText: { fontSize: 11, fontWeight: '700' },
   badgeTextMember: { color: PRIMARY_DARK },
@@ -743,7 +745,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Brand.primarySoft,
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -787,7 +789,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Brand.primarySoft,
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -862,7 +864,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: Brand.primarySoft,
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -901,7 +903,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: Brand.primarySoft,
+    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
   },

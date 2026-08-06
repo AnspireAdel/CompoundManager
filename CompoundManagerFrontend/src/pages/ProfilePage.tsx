@@ -29,6 +29,7 @@ function displayValue(value: string | number | null | undefined) {
 export default function ProfilePage() {
   const { updateUser, isOwner } = useAuth();
   const [form, setForm] = useState({
+    username: '',
     name: '',
     email: '',
     mobile: '',
@@ -64,6 +65,7 @@ export default function ProfilePage() {
     ]);
     setServiceTypes(types);
     setForm({
+      username: me.username || '',
       name: me.name || '',
       email: me.email || '',
       mobile: me.resident?.mobile || '',
@@ -107,6 +109,7 @@ export default function ProfilePage() {
     setMessage('');
     try {
       const updated = await api.updateProfile({
+        username: form.username,
         name: form.name,
         email: form.email,
         mobile: form.mobile || undefined,
@@ -115,6 +118,7 @@ export default function ProfilePage() {
       });
       updateUser({
         id: updated.id,
+        username: updated.username,
         email: updated.email,
         name: updated.name,
         role: updated.role,
@@ -335,6 +339,16 @@ export default function ProfilePage() {
             <FormRow>
               <FormField label="الاسم">
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              </FormField>
+              <FormField label="اسم المستخدم">
+                <Input
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  minLength={5}
+                  required
+                />
               </FormField>
               <FormField label="البريد الإلكتروني">
                 <Input

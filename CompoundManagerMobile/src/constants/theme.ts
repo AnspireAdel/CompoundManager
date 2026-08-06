@@ -1,40 +1,26 @@
 /**
- * Compound Manager brand theme — jasmine / garden inspired.
+ * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
+ * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
 import '@/global.css';
 
 import { Platform } from 'react-native';
 
-export const Brand = {
-  primary: '#1B5E45',
-  primaryDark: '#0F3D2E',
-  primarySoft: '#E8F5EF',
-  accent: '#C4A35A',
-  accentSoft: '#F7F1E1',
-  danger: '#B91C1C',
-  background: '#F4F7F5',
-  surface: '#FFFFFF',
-  border: '#D7E3DC',
-  text: '#14231C',
-  textSecondary: '#5B6B63',
-  muted: '#8A9A92',
-} as const;
-
 export const Colors = {
   light: {
-    text: Brand.text,
-    background: Brand.surface,
-    backgroundElement: Brand.primarySoft,
-    backgroundSelected: Brand.border,
-    textSecondary: Brand.textSecondary,
+    text: '#000000',
+    background: '#ffffff',
+    backgroundElement: '#F0F0F3',
+    backgroundSelected: '#E0E1E6',
+    textSecondary: '#60646C',
   },
   dark: {
     text: '#ffffff',
-    background: Brand.primaryDark,
-    backgroundElement: '#1A4A38',
-    backgroundSelected: '#246048',
-    textSecondary: '#B7C9BF',
+    background: '#000000',
+    backgroundElement: '#212225',
+    backgroundSelected: '#2E3135',
+    textSecondary: '#B0B4BA',
   },
 } as const;
 
@@ -42,9 +28,13 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
+    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
+    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
+    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
+    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

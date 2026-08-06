@@ -49,6 +49,7 @@ export default function ResidentsPage() {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [resettingId, setResettingId] = useState<number | null>(null);
+  const [previewUsername, setPreviewUsername] = useState('');
 
   function load() {
     api.getResidents(search ? { search } : undefined).then(setResidents).catch(console.error);
@@ -83,6 +84,8 @@ export default function ResidentsPage() {
     setMessage('');
     setDependents([]);
     setDepForm({ name: '', relation: 'زوج', mobile: '', email: '' });
+    setPreviewUsername('');
+    api.getNextUsername().then((r) => setPreviewUsername(r.username)).catch(console.error);
     setShowForm(true);
   }
 
@@ -106,6 +109,7 @@ export default function ResidentsPage() {
     setError('');
     setMessage('');
     setDepForm({ name: '', relation: 'زوج', mobile: '', email: '' });
+    setPreviewUsername(r.user?.username || '');
     setShowForm(true);
     try {
       setDependents(await api.getDependents(r.id));
@@ -282,11 +286,14 @@ export default function ResidentsPage() {
                     required
                   />
                 </FormField>
+                <FormField label="اسم المستخدم">
+                  <Input value={previewUsername || '—'} readOnly disabled />
+                </FormField>
               </FormRow>
               {!editingId && (
                 <p className="text-sm text-muted-foreground">
                   كلمة المرور الافتراضية للمالك: <span className="font-semibold">123</span>
-                  — يُطلب تغييرها عند أول تسجيل دخول.
+                  — يُطلب تغييرها واسم المستخدم عند أول تسجيل دخول.
                 </p>
               )}
               <FormRow>

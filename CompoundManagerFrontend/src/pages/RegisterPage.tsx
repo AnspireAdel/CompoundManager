@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
   const [form, setForm] = useState({
+    username: '',
     name: '',
     email: '',
     password: '',
@@ -34,10 +35,16 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.getUnitTypes().then((types) => {
-      setUnitTypes(types);
-      if (types[0]) setForm((f) => ({ ...f, unitTypeId: types[0].id }));
-    }).catch(console.error);
+    Promise.all([api.getUnitTypes(), api.getSuggestedUsername()])
+      .then(([types, suggested]) => {
+        setUnitTypes(types);
+        setForm((f) => ({
+          ...f,
+          unitTypeId: types[0]?.id ?? f.unitTypeId,
+          username: f.username || suggested.username,
+        }));
+      })
+      .catch(console.error);
   }, []);
 
   const selectedType = unitTypes.find((t) => t.id === Number(form.unitTypeId));
@@ -112,6 +119,21 @@ export default function RegisterPage() {
                 />
               </div>
             </FormRow>
+            <div className="space-y-2">
+              <Label htmlFor="username">اسم المستخدم</Label>
+              <Input
+                id="username"
+                value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                autoCapitalize="none"
+                autoCorrect="off"
+                minLength={5}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                مقترح تلقائياً — يمكنك تغييره. 5 أحرف على الأقل، حروف إنجليزية وأرقام فقط.
+              </p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">البريد الإلكتروني</Label>
               <Input

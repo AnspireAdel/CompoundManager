@@ -8,6 +8,7 @@ import {
   syncDependentChatsFromOwner,
 } from '../lib/residentAccess';
 import { normalizePassword } from '../lib/password';
+import { allocateNextSequentialUsername } from '../lib/username';
 
 const router = Router();
 
@@ -63,7 +64,7 @@ router.get('/', async (req, res) => {
         select: { id: true, residentName: true, area: true, buildingNo: true },
       },
       user: {
-        select: { id: true, email: true, mustChangePassword: true, status: true },
+        select: { id: true, email: true, username: true, mustChangePassword: true, mustChangeUsername: true, status: true },
       },
     },
     orderBy: [{ residentId: 'asc' }, { name: 'asc' }],
@@ -99,6 +100,7 @@ router.post('/', async (req, res) => {
   }
 
   const hashed = await bcrypt.hash(normalizePassword(DEFAULT_TEMP_PASSWORD), 10);
+  const username = await allocateNextSequentialUsername();
 
   const dependent = await prisma.$transaction(async (tx) => {
     const dep = await tx.dependent.create({
@@ -113,6 +115,7 @@ router.post('/', async (req, res) => {
 
     await tx.user.create({
       data: {
+        username,
         email,
         password: hashed,
         name: parsed.data.name.trim(),
@@ -121,6 +124,7 @@ router.post('/', async (req, res) => {
         residentId,
         dependentId: dep.id,
         mustChangePassword: true,
+        mustChangeUsername: true,
       },
     });
 
@@ -136,7 +140,7 @@ router.post('/', async (req, res) => {
   const full = await prisma.dependent.findUnique({
     where: { id: dependent.id },
     include: {
-      user: { select: { id: true, email: true, mustChangePassword: true, status: true } },
+      user: { select: { id: true, email: true, username: true, mustChangePassword: true, mustChangeUsername: true, status: true } },
     },
   });
 
@@ -193,8 +197,10 @@ router.put('/:id', async (req, res) => {
     });
   } else if (nextEmail) {
     const hashed = await bcrypt.hash(normalizePassword(DEFAULT_TEMP_PASSWORD), 10);
+    const username = await allocateNextSequentialUsername();
     const depUser = await prisma.user.create({
       data: {
+        username,
         email: nextEmail,
         password: hashed,
         name: dependent.name,
@@ -203,6 +209,7 @@ router.put('/:id', async (req, res) => {
         residentId: dependent.residentId,
         dependentId: dependent.id,
         mustChangePassword: true,
+        mustChangeUsername: true,
       },
     });
     const owner = await findOwnerUser(dependent.residentId);
@@ -212,7 +219,7 @@ router.put('/:id', async (req, res) => {
   const full = await prisma.dependent.findUnique({
     where: { id },
     include: {
-      user: { select: { id: true, email: true, mustChangePassword: true, status: true } },
+      user: { select: { id: true, email: true, username: true, mustChangePassword: true, mustChangeUsername: true, status: true } },
     },
   });
   res.json(full);
@@ -248,8 +255,10 @@ router.post('/:id/reset-password', async (req, res) => {
       },
     });
   } else {
+    const username = await allocateNextSequentialUsername();
     const depUser = await prisma.user.create({
       data: {
+        username,
         email,
         password: hashed,
         name: existing.name,
@@ -258,6 +267,7 @@ router.post('/:id/reset-password', async (req, res) => {
         residentId: existing.residentId,
         dependentId: existing.id,
         mustChangePassword: true,
+        mustChangeUsername: true,
       },
     });
     const owner = await findOwnerUser(existing.residentId);

@@ -8,7 +8,7 @@ const MOBILE_ALLOWED_ROLES = new Set(['OWNER', 'DEPENDENT']);
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<User>;
+  login: (username: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   refreshUser: () => Promise<User | null>;
@@ -64,8 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, [refreshUser]);
 
-  async function login(email: string, password: string) {
-    const { token, user: u } = await api.login(email, password);
+  async function login(username: string, password: string) {
+    const { token, user: u } = await api.login(username, password);
     try {
       assertMobileUser(u);
     } catch (err) {

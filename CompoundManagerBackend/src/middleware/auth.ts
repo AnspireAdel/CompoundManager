@@ -6,6 +6,7 @@ import { config } from '../config/env';
 export interface AuthUser {
   id: number;
   email: string;
+  username?: string;
   role: Role;
   residentId?: number | null;
 }

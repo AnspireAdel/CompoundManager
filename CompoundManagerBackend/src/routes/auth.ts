@@ -7,16 +7,23 @@ import { authenticate, signToken } from '../middleware/auth';
 import { createNotification } from '../services/notificationService';
 import { resolveUnitNumbers } from '../lib/unitFields';
 import { normalizePassword, tryNormalizePassword } from '../lib/password';
+import {
+  allocateNextSequentialUsername,
+  assertUsernameAvailable,
+  normalizeUsername,
+  validateCustomUsername,
+} from '../lib/username';
 
 const router = Router();
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(1),
   password: z.string().min(1),
   client: z.enum(['mobile', 'web']).optional(),
 });
 
 const registerSchema = z.object({
+  username: z.string().min(1),
   name: z.string().min(1).max(60),
   email: z.string().email(),
   password: z.string().min(6),
@@ -33,6 +40,7 @@ const registerSchema = z.object({
 
 const profileSchema = z.object({
   name: z.string().min(1).max(60).optional(),
+  username: z.string().min(1).optional(),
   email: z.string().email().optional(),
   mobile: z.string().max(30).optional(),
   landLine: z.string().max(30).optional().nullable(),
@@ -42,6 +50,10 @@ const profileSchema = z.object({
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).optional(),
   newPassword: z.string().min(6),
+});
+
+const changeUsernameSchema = z.object({
+  username: z.string().min(1),
 });
 
 const DEFAULT_OWNER_PASSWORD = '123';
@@ -56,11 +68,26 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(6),
 });
 
+router.get('/suggested-username', async (_req, res) => {
+  try {
+    const username = await allocateNextSequentialUsername();
+    res.json({ username });
+  } catch (err) {
+    res.status(503).json({
+      error: err instanceof Error ? err.message : 'لا يوجد اسم مستخدم متاح حالياً',
+    });
+  }
+});
+
 router.post('/register', async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const data = parsed.data;
+
+  const usernameCheck = await assertUsernameAvailable(data.username);
+  if (!usernameCheck.ok) return res.status(400).json({ error: usernameCheck.error });
+
   const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
   if (existingUser) return res.status(409).json({ error: 'البريد الإلكتروني مستخدم بالفعل' });
 
@@ -132,12 +159,14 @@ router.post('/register', async (req, res) => {
 
   const user = await prisma.user.create({
     data: {
+      username: usernameCheck.value,
       email: data.email,
       password: hashed,
       name: data.name,
       role: 'OWNER',
       status: 'PENDING',
       residentId: resident.id,
+      mustChangeUsername: false,
     },
   });
 
@@ -166,15 +195,16 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const { email, password, client } = parsed.data;
-  const user = await prisma.user.findUnique({ where: { email } });
+  const { username, password, client } = parsed.data;
+  const normalizedUsername = normalizeUsername(username);
+  const user = await prisma.user.findUnique({ where: { username: normalizedUsername } });
   if (!user) {
-    return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
+    return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
   }
 
   const pw = tryNormalizePassword(password);
   if (!pw.ok) {
-    return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
+    return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
   }
 
   let valid = await bcrypt.compare(pw.value, user.password);
@@ -194,7 +224,7 @@ router.post('/login', async (req, res) => {
     }
   }
   if (!valid) {
-    return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
+    return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
   }
 
   if (user.status === 'PENDING') {
@@ -213,6 +243,7 @@ router.post('/login', async (req, res) => {
   const token = signToken({
     id: user.id,
     email: user.email,
+    username: user.username,
     role: user.role,
     residentId: user.residentId,
   });
@@ -235,12 +266,14 @@ router.post('/login', async (req, res) => {
     token,
     user: {
       id: user.id,
+      username: user.username,
       email: user.email,
       name: user.name,
       role: user.role,
       status: user.status,
       residentId: user.residentId,
       mustChangePassword,
+      mustChangeUsername: user.mustChangeUsername,
     },
   });
 });
@@ -272,7 +305,7 @@ router.get('/me', authenticate, async (req, res) => {
     mustChangePassword = true;
   }
 
-  const payload = { ...safe, mustChangePassword };
+  const payload = { ...safe, mustChangePassword, mustChangeUsername: user.mustChangeUsername };
 
   if ((payload.role === 'OWNER' || payload.role === 'DEPENDENT') && payload.resident) {
     const { notes: _notes, ...resident } = payload.resident as typeof payload.resident & { notes?: string | null };
@@ -285,10 +318,18 @@ router.put('/profile', authenticate, async (req, res) => {
   const parsed = profileSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const { name, email, mobile, landLine, nationality } = parsed.data;
+  const { name, username, email, mobile, landLine, nationality } = parsed.data;
   const userId = req.user!.id;
 
-  if (email && email !== req.user!.email) {
+  const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+  if (!currentUser) return res.status(404).json({ error: 'User not found' });
+
+  if (username && username !== currentUser.username) {
+    const check = await assertUsernameAvailable(username, userId);
+    if (!check.ok) return res.status(400).json({ error: check.error });
+  }
+
+  if (email && email !== currentUser.email) {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing && existing.id !== userId) {
       return res.status(409).json({ error: 'البريد الإلكتروني مستخدم بالفعل' });
@@ -298,6 +339,11 @@ router.put('/profile', authenticate, async (req, res) => {
   const userData: Record<string, unknown> = {};
   if (name) userData.name = name;
   if (email) userData.email = email;
+  if (username) {
+    const check = validateCustomUsername(username);
+    if (!check.ok) return res.status(400).json({ error: check.error });
+    userData.username = check.value;
+  }
 
   const user = await prisma.user.update({
     where: { id: userId },
@@ -384,6 +430,27 @@ router.post('/change-password', authenticate, async (req, res) => {
   });
 
   res.json({ message: 'تم تغيير كلمة المرور بنجاح', mustChangePassword: false });
+});
+
+router.post('/change-username', authenticate, async (req, res) => {
+  const parsed = changeUsernameSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const check = await assertUsernameAvailable(parsed.data.username, user.id);
+  if (!check.ok) return res.status(400).json({ error: check.error });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      username: check.value,
+      mustChangeUsername: false,
+    },
+  });
+
+  res.json({ message: 'تم تغيير اسم المستخدم بنجاح', username: check.value, mustChangeUsername: false });
 });
 
 router.post('/forgot-password', async (req, res) => {

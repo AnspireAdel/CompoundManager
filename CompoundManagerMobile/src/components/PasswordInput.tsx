@@ -10,7 +10,6 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Brand } from '@/constants/theme';
 
 const ARABIC_INDIC = '٠١٢٣٤٥٦٧٨٩';
 const EASTERN_ARABIC = '۰۱۲۳۴۵۶۷۸۹';
@@ -74,7 +73,7 @@ export default function PasswordInput({
         <Ionicons
           name={visible ? 'eye-off-outline' : 'eye-outline'}
           size={22}
-          color={Brand.muted}
+          color="#64748b"
         />
       </TouchableOpacity>
     </View>
@@ -88,13 +87,11 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: Brand.border,
-    borderRadius: 12,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
     padding: 12,
     paddingLeft: 44,
     fontSize: 16,
-    backgroundColor: '#FAFCFA',
-    color: Brand.text,
   },
   toggle: {
     position: 'absolute',

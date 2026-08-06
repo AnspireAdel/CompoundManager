@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/api/client';
@@ -10,28 +10,56 @@ import PasswordInput from '@/components/PasswordInput';
 export default function ForceChangePasswordScreen() {
   const { user, updateUser, logout } = useAuth();
   const router = useRouter();
+  const [newUsername, setNewUsername] = useState(user?.username || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const needsUsername = Boolean(user?.mustChangeUsername);
+  const needsPassword = Boolean(user?.mustChangePassword);
+
   async function handleSubmit() {
     setError('');
-    if (newPassword.length < 6) {
-      setError('كلمة المرور الجديدة يجب ألا تقل عن 6 أحرف');
+
+    if (needsUsername && newUsername.trim().length < 5) {
+      setError('اسم المستخدم يجب ألا يقل عن 5 أحرف');
       return;
     }
-    if (newPassword !== confirmPassword) {
-      setError('كلمتا المرور غير متطابقتين');
-      return;
+
+    if (needsPassword) {
+      if (newPassword.length < 6) {
+        setError('كلمة المرور الجديدة يجب ألا تقل عن 6 أحرف');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setError('كلمتا المرور غير متطابقتين');
+        return;
+      }
     }
+
     setLoading(true);
     try {
-      await api.changePassword(undefined, newPassword);
-      if (user) updateUser({ ...user, mustChangePassword: false });
+      let nextUser = user;
+
+      if (needsUsername) {
+        const result = await api.changeUsername(newUsername.trim());
+        if (nextUser) {
+          nextUser = { ...nextUser, username: result.username, mustChangeUsername: false };
+        }
+      }
+
+      if (needsPassword) {
+        await api.changePassword(undefined, newPassword);
+        if (nextUser) {
+          nextUser = { ...nextUser, mustChangePassword: false };
+        }
+      }
+
+      if (nextUser) updateUser(nextUser);
       router.replace('/(tabs)');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل تغيير كلمة المرور');
+      setError(err instanceof Error ? err.message : 'فشل حفظ البيانات');
     } finally {
       setLoading(false);
     }
@@ -41,17 +69,38 @@ export default function ForceChangePasswordScreen() {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.card}>
-          <Text style={styles.title}>تغيير كلمة المرور مطلوب</Text>
+          <Text style={styles.title}>إعداد الحساب مطلوب</Text>
           <Text style={styles.subtitle}>
-            تم إنشاء حسابك بكلمة مرور مؤقتة. عيّن كلمة مرور جديدة للمتابعة.
+            {needsUsername && needsPassword
+              ? 'عيّن اسم مستخدم وكلمة مرور جديدة للمتابعة.'
+              : needsUsername
+                ? 'عيّن اسم مستخدم جديد للمتابعة.'
+                : 'تم إنشاء حسابك بكلمة مرور مؤقتة. عيّن كلمة مرور جديدة للمتابعة.'}
           </Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Text style={styles.label}>كلمة المرور الجديدة</Text>
-          <PasswordInput value={newPassword} onChangeText={setNewPassword} />
+          {needsUsername && (
+            <>
+              <Text style={styles.label}>اسم المستخدم الجديد</Text>
+              <TextInput
+                style={styles.input}
+                value={newUsername}
+                onChangeText={setNewUsername}
+                autoCapitalize="none"
+                textAlign="right"
+              />
+            </>
+          )}
 
-          <Text style={styles.label}>تأكيد كلمة المرور</Text>
-          <PasswordInput value={confirmPassword} onChangeText={setConfirmPassword} />
+          {needsPassword && (
+            <>
+              <Text style={styles.label}>كلمة المرور الجديدة</Text>
+              <PasswordInput value={newPassword} onChangeText={setNewPassword} />
+
+              <Text style={styles.label}>تأكيد كلمة المرور</Text>
+              <PasswordInput value={confirmPassword} onChangeText={setConfirmPassword} />
+            </>
+          )}
 
           <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>حفظ والمتابعة</Text>}
@@ -73,6 +122,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
   subtitle: { textAlign: 'center', color: '#64748b', marginBottom: 20, lineHeight: 22 },
   label: { fontWeight: '600', marginBottom: 6, textAlign: 'right' },
+  input: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 16 },
   button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 },
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   error: { backgroundColor: '#fee2e2', color: '#b91c1c', padding: 12, borderRadius: 8, marginBottom: 16, textAlign: 'center' },

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,8 +21,9 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const u = await login(email, password);
-      navigate(u.mustChangePassword ? '/force-change-password' : '/', { replace: true });
+      const u = await login(username, password);
+      const needsSetup = u.mustChangePassword || u.mustChangeUsername;
+      navigate(needsSetup ? '/force-change-password' : '/', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'فشل تسجيل الدخول');
     } finally {
@@ -45,12 +46,13 @@ export default function LoginPage() {
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">البريد الإلكتروني</Label>
+              <Label htmlFor="username">اسم المستخدم</Label>
               <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
                 required
               />
             </div>

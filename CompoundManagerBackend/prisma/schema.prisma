@@ -228,6 +228,7 @@ model ServiceInformation {
 
 model User {
   id               Int        @id @default(autoincrement())
+  username         String     @unique
   email            String     @unique
   password         String
   name             String
@@ -238,6 +239,7 @@ model User {
   resetToken       String?    @map("RESET_TOKEN")
   resetTokenExpiry DateTime?  @map("RESET_TOKEN_EXPIRY")
   mustChangePassword Boolean  @default(false) @map("MUST_CHANGE_PASSWORD")
+  mustChangeUsername Boolean  @default(false) @map("MUST_CHANGE_USERNAME")
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 

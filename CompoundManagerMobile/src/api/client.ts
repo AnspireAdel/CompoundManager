@@ -7,6 +7,7 @@ export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface User {
   id: number;
+  username: string;
   email: string;
   name: string;
   role: Role;
@@ -16,6 +17,7 @@ export interface User {
   resident?: Partial<Resident>;
   dependent?: Partial<Dependent> | null;
   mustChangePassword?: boolean;
+  mustChangeUsername?: boolean;
 }
 
 export interface Bill {
@@ -201,11 +203,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  login: (email: string, password: string) =>
+  login: (username: string, password: string) =>
     request<{ token: string; user: User }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password, client: 'mobile' }),
+      body: JSON.stringify({ username, password, client: 'mobile' }),
     }),
+
+  getSuggestedUsername: () => request<{ username: string }>('/auth/suggested-username'),
 
   register: (data: Record<string, unknown>) =>
     request<{ message: string }>('/auth/register', {
@@ -232,6 +236,12 @@ export const api = {
         ...(currentPassword !== undefined && { currentPassword }),
         newPassword,
       }),
+    }),
+
+  changeUsername: (username: string) =>
+    request<{ message: string; username: string; mustChangeUsername?: boolean }>('/auth/change-username', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
     }),
 
   updateProfile: (data: Record<string, unknown>) =>

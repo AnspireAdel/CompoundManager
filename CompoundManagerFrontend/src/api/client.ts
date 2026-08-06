@@ -54,11 +54,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  login: (email: string, password: string) =>
+  login: (username: string, password: string) =>
     request<{ token: string; user: User }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     }),
+
+  getSuggestedUsername: () => request<{ username: string }>('/auth/suggested-username'),
 
   register: (data: Record<string, unknown>) =>
     request<{ message: string; user: User }>('/auth/register', {
@@ -87,6 +89,12 @@ export const api = {
       }),
     }),
 
+  changeUsername: (username: string) =>
+    request<{ message: string; username: string; mustChangeUsername?: boolean }>('/auth/change-username', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    }),
+
   updateProfile: (data: Record<string, unknown>) =>
     request<User & { resident?: Resident }>('/auth/profile', {
       method: 'PUT',
@@ -102,6 +110,8 @@ export const api = {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';
     return request<Resident[]>(`/residents${qs}`);
   },
+
+  getNextUsername: () => request<{ username: string }>('/residents/next-username'),
 
   getMyResident: () => request<Resident>('/residents/me'),
 

@@ -3,6 +3,7 @@ export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface User {
   id: number;
+  username: string;
   email: string;
   name: string;
   role: Role;
@@ -12,6 +13,7 @@ export interface User {
   resident?: Partial<Resident>;
   dependent?: Partial<Dependent> | null;
   mustChangePassword?: boolean;
+  mustChangeUsername?: boolean;
   createdAt?: string;
 }
 
@@ -34,7 +36,7 @@ export interface Resident {
   unitTypeId?: number | null;
   unitType?: UnitType | null;
   notes?: string | null;
-  user?: { id: number; email: string; mustChangePassword?: boolean } | null;
+  user?: { id: number; email: string; username?: string; mustChangePassword?: boolean; mustChangeUsername?: boolean } | null;
 }
 
 export interface UnitType {
@@ -56,7 +58,7 @@ export interface Dependent {
   email?: string | null;
   createdAt?: string;
   resident?: { id: number; residentName: string; area: string; buildingNo: string };
-  user?: { id: number; email: string; mustChangePassword?: boolean; status?: string } | null;
+  user?: { id: number; email: string; username?: string; mustChangePassword?: boolean; mustChangeUsername?: boolean; status?: string } | null;
 }
 
 export interface PaymentProof {

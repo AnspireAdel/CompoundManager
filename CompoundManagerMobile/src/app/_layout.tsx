@@ -2,7 +2,6 @@ import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-rout
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { Brand } from '@/constants/theme';
 
 const PUBLIC_ROUTES = new Set(['login', 'register', 'forgot-password', 'reset-password']);
 
@@ -18,7 +17,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const first = segments[0] as string | undefined;
     const inPublic = first ? PUBLIC_ROUTES.has(first) : false;
     const onForceChange = first === 'force-change-password';
-    const needsPasswordChange = Boolean(user?.mustChangePassword);
+    const needsPasswordChange = Boolean(user?.mustChangePassword || user?.mustChangeUsername);
 
     if (!user && !inPublic && !onForceChange) {
       router.replace('/login');
@@ -38,7 +37,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading || !navState?.key) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={Brand.primary} />
+        <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
   }

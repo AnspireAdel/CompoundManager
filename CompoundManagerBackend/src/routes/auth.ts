@@ -195,7 +195,7 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const { username, password, client } = parsed.data;
+  const { username, password } = parsed.data;
   const normalizedUsername = normalizeUsername(username);
   const user = await prisma.user.findUnique({ where: { username: normalizedUsername } });
   if (!user) {
@@ -232,12 +232,6 @@ router.post('/login', async (req, res) => {
   }
   if (user.status === 'REJECTED') {
     return res.status(403).json({ error: 'تم رفض طلب التسجيل. تواصل مع الإدارة' });
-  }
-
-  if (client === 'mobile' && user.role !== 'OWNER' && user.role !== 'DEPENDENT') {
-    return res.status(403).json({
-      error: 'تطبيق الموبايل للملاك والتابعين فقط. المدير والمحاسب يستخدمان نسخة الويب',
-    });
   }
 
   const token = signToken({

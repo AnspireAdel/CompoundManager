@@ -73,7 +73,8 @@ function EmptyChart() {
 }
 
 export default function DashboardPage() {
-  const { isOwner, isAdmin, isAccountant } = useAuth();
+  const { isOwner, isDependent, isAdmin, isAccountant } = useAuth();
+  const isHousehold = isOwner || isDependent;
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [myBills, setMyBills] = useState<Bill[]>([]);
   const [unread, setUnread] = useState(0);
@@ -89,11 +90,11 @@ export default function DashboardPage() {
         .catch(console.error)
         .finally(() => setLoadingYear(false));
     }
-    if (isOwner) {
+    if (isHousehold) {
       api.getBills().then(setMyBills).catch(console.error);
     }
     api.getUnreadCount().then((r) => setUnread(r.count)).catch(console.error);
-  }, [isAdmin, isAccountant, isOwner, selectedYear]);
+  }, [isAdmin, isAccountant, isHousehold, selectedYear]);
 
   const ownerStatusChart = useMemo(() => {
     const map = new Map<string, number>();
@@ -104,7 +105,7 @@ export default function DashboardPage() {
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
   }, [myBills]);
 
-  if (isOwner) {
+  if (isHousehold) {
     const unpaid = myBills.filter((b) => !['PAID'].includes(b.status));
     return (
       <div className="space-y-4">

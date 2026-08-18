@@ -25,8 +25,9 @@ const categoryLabel: Record<string, string> = {
 };
 
 export default function ContactPage() {
-  const { isOwner, isAdmin, isAccountant } = useAuth();
+  const { isOwner, isDependent, isAdmin, isAccountant } = useAuth();
   const isStaff = isAdmin || isAccountant;
+  const isHousehold = isOwner || isDependent;
   const [items, setItems] = useState<ContactRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -93,7 +94,7 @@ export default function ContactPage() {
     <div className="space-y-4">
       <PageHeader title={isStaff ? 'الطلبات والشكاوى' : 'تواصل معنا'} />
 
-      {isOwner && (
+      {isHousehold && (
         <Card>
           <CardHeader>
             <CardTitle>إرسال طلب / استفسار / شكوى</CardTitle>

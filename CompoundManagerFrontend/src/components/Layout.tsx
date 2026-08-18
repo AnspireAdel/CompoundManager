@@ -101,7 +101,7 @@ export default function Layout() {
     { to: '/send-notifications', label: 'إرسال إشعارات', icon: Send, show: isAdmin || isAccountant },
     {
       to: '/contact',
-      label: isOwner ? 'تواصل معنا' : 'الطلبات والشكاوى',
+      label: isOwner || user?.role === 'DEPENDENT' ? 'تواصل معنا' : 'الطلبات والشكاوى',
       icon: MessageSquare,
       show: true,
     },

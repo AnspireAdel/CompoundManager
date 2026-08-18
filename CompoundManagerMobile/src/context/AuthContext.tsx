@@ -3,8 +3,6 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { api, User } from '@/api/client';
 import { getToken, setToken, removeToken } from '@/lib/storage';
 
-const MOBILE_ALLOWED_ROLES = new Set(['OWNER', 'DEPENDENT']);
-
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -12,15 +10,15 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   refreshUser: () => Promise<User | null>;
+  isSuperAdmin: boolean;
+  isAdmin: boolean;
+  isAccountant: boolean;
+  isOwner: boolean;
+  isDependent: boolean;
+  isStaff: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-function assertMobileUser(user: User) {
-  if (!MOBILE_ALLOWED_ROLES.has(user.role)) {
-    throw new Error('تطبيق الموبايل للملاك والتابعين فقط. المدير والمحاسب يستخدمان نسخة الويب');
-  }
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -33,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
     const me = await api.getMe();
-    assertMobileUser(me);
     setUser(me);
     return me;
   }, []);
@@ -51,7 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [refreshUser]);
 
-  // Re-fetch profile when app returns to foreground (admin may have updated owner data)
   useEffect(() => {
     const onChange = (state: AppStateStatus) => {
       if (state !== 'active') return;
@@ -66,14 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(username: string, password: string) {
     const { token, user: u } = await api.login(username, password);
-    try {
-      assertMobileUser(u);
-    } catch (err) {
-      await removeToken();
-      throw err;
-    }
     await setToken(token);
-    // Login payload omits resident details — load full profile
     try {
       const me = await refreshUser();
       return me || u;
@@ -92,8 +81,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   }
 
+  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const isAdmin = user?.role === 'ADMIN' || isSuperAdmin;
+  const isAccountant = user?.role === 'ACCOUNTANT';
+  const isOwner = user?.role === 'OWNER';
+  const isDependent = user?.role === 'DEPENDENT';
+  const isStaff = isAdmin || isAccountant;
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUser, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        updateUser,
+        refreshUser,
+        isSuperAdmin,
+        isAdmin,
+        isAccountant,
+        isOwner,
+        isDependent,
+        isStaff,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

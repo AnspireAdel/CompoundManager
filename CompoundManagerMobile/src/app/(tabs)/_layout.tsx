@@ -19,14 +19,6 @@ export default function TabLayout() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="services">
-        <NativeTabs.Trigger.Label>الخدمات</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
       <NativeTabs.Trigger name="chats">
         <NativeTabs.Trigger.Label>المحادثات</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
@@ -35,8 +27,8 @@ export default function TabLayout() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="contact">
-        <NativeTabs.Trigger.Label>تواصل</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="more">
+        <NativeTabs.Trigger.Label>المزيد</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/explore.png')}
           renderingMode="template"
@@ -44,7 +36,7 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label>الملف الشخصي</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>الملف</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/home.png')}
           renderingMode="template"

@@ -27,7 +27,8 @@ function displayValue(value: string | number | null | undefined) {
 }
 
 export default function ProfilePage() {
-  const { updateUser, isOwner } = useAuth();
+  const { updateUser, isOwner, isDependent } = useAuth();
+  const isHousehold = isOwner || isDependent;
   const [form, setForm] = useState({
     username: '',
     name: '',
@@ -69,7 +70,9 @@ export default function ProfilePage() {
       username: me.username || '',
       name: me.name || '',
       email: me.email || '',
-      mobile: me.resident?.mobile || '',
+      mobile: me.role === 'DEPENDENT'
+        ? (me.dependent?.mobile || '')
+        : (me.resident?.mobile || ''),
       landLine: me.resident?.landLine || '',
       nationality: me.resident?.nationality || '',
     });
@@ -375,7 +378,7 @@ export default function ProfilePage() {
                 />
               </FormField>
             </FormRow>
-            {(isOwner || resident) && (
+            {(isHousehold || resident) && (
               <FormRow>
                 <FormField label="الموبايل">
                   <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />

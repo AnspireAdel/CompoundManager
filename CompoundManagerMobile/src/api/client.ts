@@ -167,19 +167,94 @@ export interface Resident {
   landLine?: string;
   email?: string;
   monthlyFees: number;
+  openingBalance?: number;
+  notes?: string | null;
   balance?: number;
   isServiceProvider?: boolean;
   unitTypeId?: number | null;
   unitType?: UnitType | null;
+  user?: { id: number; email: string; username?: string; mustChangePassword?: boolean; mustChangeUsername?: boolean } | null;
 }
 
 export interface PaymentProof {
   id: number;
   billId: number;
+  residentId?: number;
   amount: number;
   status: string;
   fileName: string;
   filePath: string;
+  notes?: string;
+  reviewNotes?: string;
+  createdAt?: string;
+  bill?: Bill;
+  resident?: Partial<Resident>;
+}
+
+export interface Transaction {
+  id: number;
+  trxDate: string;
+  residentId: number;
+  trxType?: string;
+  drCr: string;
+  trxAmount: number;
+  notes?: string;
+  posted: string;
+  resident?: Partial<Resident>;
+}
+
+export interface ExpenseType {
+  id: number;
+  name: string;
+  activeFlag: string;
+}
+
+export interface Expense {
+  id: number;
+  expenseTypeId: number;
+  amount: number;
+  expenseDate: string;
+  notes?: string | null;
+  residentId?: number | null;
+  expenseType?: ExpenseType;
+  resident?: Partial<Resident> | null;
+}
+
+export interface DashboardStats {
+  totalUnits: number;
+  monthlyMaintenance: number;
+  unpaidBills: number;
+  totalOutstanding: number;
+  unitTypeBreakdown: Array<{ name: string; count: number; monthlyFees: number; totalValue: number }>;
+  totals: { count: number; value: number };
+  selectedYear?: number;
+  availableYears?: number[];
+  yearlyMonthly?: Array<{
+    monthKey: string;
+    label: string;
+    issuedCount: number;
+    collectedCount: number;
+    issued: number;
+    collected: number;
+    remaining: number;
+    expenses: number;
+    net: number;
+  }>;
+  yearlyTotals?: {
+    issuedCount: number;
+    collectedCount: number;
+    issued: number;
+    collected: number;
+    remaining: number;
+    expenses: number;
+    net: number;
+  };
+  yearlyExpenseBreakdown?: {
+    expenseTypes: Array<{ id: number; name: string }>;
+    rows: Array<{ monthKey: string; label: string; total: number; byType: Record<string, number> }>;
+    totals: { total: number; byType: Record<string, number> };
+  };
+  overdueBills: Bill[];
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -253,9 +328,72 @@ export const api = {
 
   getMe: () => request<User & { resident?: Resident }>('/auth/me'),
 
+  getDashboard: (year?: number) =>
+    request<DashboardStats>(`/dashboard/stats${year ? `?year=${year}` : ''}`),
+
+  getResidents: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<Resident[]>(`/residents${qs}`);
+  },
+
+  getNextUsername: () => request<{ username: string }>('/residents/next-username'),
+
   getMyResident: () => request<Resident>('/residents/me'),
 
-  getBills: () => request<Bill[]>('/bills'),
+  createResident: (data: Record<string, unknown>) =>
+    request<Resident>('/residents', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateResident: (id: number, data: Record<string, unknown>) =>
+    request<Resident>(`/residents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  resetResidentPassword: (id: number) =>
+    request<{ message: string }>(`/residents/${id}/reset-password`, { method: 'POST' }),
+
+  getPendingUsers: () => request<User[]>('/users/pending'),
+
+  updatePendingRegistration: (id: number, data: Record<string, unknown>) =>
+    request<User>(`/users/${id}/registration`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  approveUser: (id: number, monthlyFees?: number) =>
+    request<User>(`/users/${id}/approve`, {
+      method: 'PATCH',
+      body: JSON.stringify({ monthlyFees }),
+    }),
+
+  rejectUser: (id: number, reason?: string) =>
+    request<User>(`/users/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    }),
+
+  getBills: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<Bill[]>(`/bills${qs}`);
+  },
+
+  issueMonthlyBills: (period: string, dueDate: string) =>
+    request<{ issued: number }>('/bills/issue-monthly', {
+      method: 'POST',
+      body: JSON.stringify({ period, dueDate }),
+    }),
+
+  createExtraBill: (data: {
+    residentId: number;
+    title: string;
+    amount: number;
+    dueDate: string;
+    notes?: string;
+  }) =>
+    request<Bill>('/bills/extra', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  payBill: (id: number, amount: number, notes?: string) =>
+    request(`/bills/${id}/pay`, { method: 'POST', body: JSON.stringify({ amount, notes }) }),
 
   uploadPaymentProof: async (
     billId: number,
@@ -306,7 +444,30 @@ export const api = {
     return JSON.parse(result.body) as PaymentProof;
   },
 
-  getServices: () => request<Service[]>('/services'),
+  getPayments: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<PaymentProof[]>(`/payments${qs}`);
+  },
+
+  approvePayment: (id: number, reviewNotes?: string) =>
+    request<PaymentProof>(`/payments/${id}/approve`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reviewNotes }),
+    }),
+
+  rejectPayment: (id: number, reviewNotes?: string) =>
+    request<PaymentProof>(`/payments/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reviewNotes }),
+    }),
+
+  getTransactions: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<Transaction[]>(`/transactions${qs}`);
+  },
+
+  getServices: (manage?: boolean) =>
+    request<Service[]>(`/services${manage ? '?manage=true' : ''}`),
 
   getMyServices: () =>
     request<{ isServiceProvider: boolean; services: Service[]; service: Service | null }>('/services/my'),
@@ -328,12 +489,113 @@ export const api = {
       body: JSON.stringify({ enabled }),
     }),
 
-  getServiceTypes: () => request<ServiceType[]>('/service-types'),
+  getServiceTypes: (manage?: boolean) =>
+    request<ServiceType[]>(`/service-types${manage ? '?manage=true' : ''}`),
 
-  getUnitTypes: () => request<UnitType[]>('/unit-types'),
+  createServiceType: (name: string) =>
+    request<ServiceType>('/service-types', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
 
-  createService: (data: { serviceType: string; serviceName: string; mobile: string; notes?: string }) =>
+  updateServiceType: (id: number, data: { name?: string; activeFlag?: string }) =>
+    request<ServiceType>(`/service-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  toggleServiceType: (id: number) =>
+    request<ServiceType>(`/service-types/${id}/toggle`, { method: 'PATCH' }),
+
+  deleteServiceType: (id: number) =>
+    request<void>(`/service-types/${id}`, { method: 'DELETE' }),
+
+  getUnitTypes: (manage?: boolean) =>
+    request<UnitType[]>(`/unit-types${manage ? '?manage=true' : ''}`),
+
+  createUnitType: (data: { name: string; monthlyFees: number; hasFloor: boolean; hasApartment: boolean }) =>
+    request<UnitType>('/unit-types', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateUnitType: (id: number, data: {
+    name?: string;
+    monthlyFees?: number;
+    hasFloor?: boolean;
+    hasApartment?: boolean;
+    activeFlag?: string;
+  }) =>
+    request<UnitType>(`/unit-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  toggleUnitType: (id: number) =>
+    request<UnitType>(`/unit-types/${id}/toggle`, { method: 'PATCH' }),
+
+  deleteUnitType: (id: number) =>
+    request<void>(`/unit-types/${id}`, { method: 'DELETE' }),
+
+  getExpenseTypes: (manage?: boolean) =>
+    request<ExpenseType[]>(`/expense-types${manage ? '?manage=true' : ''}`),
+
+  createExpenseType: (name: string) =>
+    request<ExpenseType>('/expense-types', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  updateExpenseType: (id: number, data: { name?: string; activeFlag?: string }) =>
+    request<ExpenseType>(`/expense-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  toggleExpenseType: (id: number) =>
+    request<ExpenseType>(`/expense-types/${id}/toggle`, { method: 'PATCH' }),
+
+  deleteExpenseType: (id: number) =>
+    request<void>(`/expense-types/${id}`, { method: 'DELETE' }),
+
+  getExpenses: (params?: Record<string, string>) => {
+    const q = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<Expense[]>(`/expenses${q}`);
+  },
+
+  createExpense: (data: {
+    expenseTypeId: number;
+    amount: number;
+    expenseDate: string;
+    notes?: string | null;
+    residentId?: number | null;
+    scope: 'COMPOUND' | 'UNIT';
+  }) =>
+    request<Expense>('/expenses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateExpense: (id: number, data: Record<string, unknown>) =>
+    request<Expense>(`/expenses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteExpense: (id: number) =>
+    request<void>(`/expenses/${id}`, { method: 'DELETE' }),
+
+  createService: (data: Partial<Service> & { residentId?: number | null }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateService: (id: number, data: Partial<Service> & { residentId?: number | null }) =>
+    request<Service>(`/services/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  toggleService: (id: number) =>
+    request<Service>(`/services/${id}/toggle`, { method: 'PATCH' }),
+
+  deleteService: (id: number) =>
+    request<void>(`/services/${id}`, { method: 'DELETE' }),
 
   getNotifications: () => request<Notification[]>('/notifications'),
 
@@ -344,7 +606,10 @@ export const api = {
 
   markAllRead: () => request('/notifications/read-all', { method: 'PATCH' }),
 
-  getContactRequests: () => request<ContactRequest[]>('/contact-requests'),
+  getContactRequests: (params?: Record<string, string>) => {
+    const q = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<ContactRequest[]>(`/contact-requests${q}`);
+  },
 
   createContactRequest: (data: { category: string; subject: string; message: string }) =>
     request<ContactRequest>('/contact-requests', {
@@ -352,11 +617,28 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getSuggestedUsername: () => request<{ username: string }>('/auth/suggested-username'),
+  updateContactRequest: (id: number, data: { status: string; staffResponse?: string }) =>
+    request<ContactRequest>(`/contact-requests/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 
-  getDependents: () => request<Dependent[]>('/dependents'),
+  sendNotification: (data:
+    | { target: 'area'; areas: string[]; title: string; message: string }
+    | { target: 'building'; area: string; buildings: string[]; title: string; message: string }
+    | { target: 'owner'; residentId: number; title: string; message: string }
+  ) =>
+    request<{ sent: number }>('/notifications/send', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
-  createDependent: (data: { name: string; relation: string; mobile: string; email: string }) =>
+  getDependents: (residentId?: number) => {
+    const q = residentId ? `?residentId=${residentId}` : '';
+    return request<Dependent[]>(`/dependents${q}`);
+  },
+
+  createDependent: (data: { name: string; relation: string; mobile: string; email: string; residentId?: number }) =>
     request<Dependent>('/dependents', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -373,6 +655,9 @@ export const api = {
 
   deleteDependent: (id: number) =>
     request(`/dependents/${id}`, { method: 'DELETE' }),
+
+  resetDependentPassword: (id: number) =>
+    request<{ message: string }>(`/dependents/${id}/reset-password`, { method: 'POST' }),
 
   getChats: () => request<ChatGroupSummary[]>('/chats'),
 

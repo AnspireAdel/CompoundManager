@@ -34,8 +34,7 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.card}>
           <Text style={styles.title}>إدارة المجمع السكني</Text>
-          <Text style={styles.subtitle}>تسجيل دخول الملاك</Text>
-          <Text style={styles.hint}>المدير والمحاسب يستخدمان نسخة الويب</Text>
+          <Text style={styles.subtitle}>تسجيل الدخول إلى النظام</Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Text style={styles.label}>اسم المستخدم</Text>
@@ -65,8 +64,7 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 24 },
   title: { fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
-  subtitle: { textAlign: 'center', color: '#64748b', marginBottom: 6 },
-  hint: { textAlign: 'center', color: '#94a3b8', fontSize: 12, marginBottom: 20 },
+  subtitle: { textAlign: 'center', color: '#64748b', marginBottom: 20 },
   label: { fontWeight: '600', marginBottom: 6, textAlign: 'right' },
   input: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 16 },
   button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 8 },

@@ -56,6 +56,17 @@ export default function RootLayout() {
           <Stack.Screen name="reset-password" />
           <Stack.Screen name="force-change-password" />
           <Stack.Screen name="notifications" />
+          <Stack.Screen name="residents" />
+          <Stack.Screen name="registrations" />
+          <Stack.Screen name="payments" />
+          <Stack.Screen name="transactions" />
+          <Stack.Screen name="expenses" />
+          <Stack.Screen name="services" />
+          <Stack.Screen name="contact" />
+          <Stack.Screen name="send-notifications" />
+          <Stack.Screen name="unit-types" />
+          <Stack.Screen name="service-types" />
+          <Stack.Screen name="expense-types" />
           <Stack.Screen name="(tabs)" />
         </Stack>
       </AuthGate>

@@ -19,7 +19,6 @@ function displayValue(value: string | number | null | undefined) {
 export default function ProfileScreen() {
   const { user, refreshUser } = useAuth();
   const isOwner = user?.role === 'OWNER';
-  const isResident = user?.role === 'OWNER' || user?.role === 'DEPENDENT';
   const [form, setForm] = useState({ username: '', name: '', email: '', mobile: '', landLine: '', nationality: '' });
   const [resident, setResident] = useState<Partial<Resident> | null>(null);
   const [serviceForm, setServiceForm] = useState({
@@ -61,7 +60,7 @@ export default function ProfileScreen() {
       setResident(me.resident || null);
       setIsServiceProvider(Boolean(me.resident?.isServiceProvider));
 
-      if (me.role === 'OWNER' || me.role === 'DEPENDENT') {
+      if (me.role === 'OWNER') {
         const mine = await api.getMyServices();
         setIsServiceProvider(mine.isServiceProvider);
         if (mine.service) {
@@ -177,6 +176,23 @@ export default function ProfileScreen() {
       mobile: d.mobile,
       email: d.email || '',
     });
+  }
+
+  async function handleResetDependentPassword(id: number) {
+    Alert.alert('تأكيد', 'إعادة كلمة مرور هذا التابع إلى 123؟', [
+      { text: 'إلغاء', style: 'cancel' },
+      {
+        text: 'إعادة',
+        onPress: async () => {
+          try {
+            const r = await api.resetDependentPassword(id);
+            Alert.alert('تم', r.message);
+          } catch (e) {
+            Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل إعادة التعيين');
+          }
+        },
+      },
+    ]);
   }
 
   async function handleDeleteDependent(id: number) {
@@ -359,7 +375,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {isResident && (
+          {isOwner && (
             <View style={styles.section}>
               <View style={styles.providerRow}>
                 <View style={{ flex: 1 }}>
@@ -460,6 +476,9 @@ export default function ProfileScreen() {
                   </View>
                   <TouchableOpacity onPress={() => startEditDependent(d)}>
                     <Text style={styles.depAction}>تعديل</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleResetDependentPassword(d.id)}>
+                    <Text style={styles.depAction}>كلمة المرور</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDeleteDependent(d.id)}>
                     <Text style={[styles.depAction, { color: '#dc2626' }]}>حذف</Text>

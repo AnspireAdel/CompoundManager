@@ -24,8 +24,9 @@ function billLabel(b: Bill) {
 }
 
 export default function BillsPage() {
-  const { isAdmin, isAccountant, isOwner } = useAuth();
+  const { isAdmin, isAccountant, isOwner, isDependent } = useAuth();
   const isStaff = isAdmin || isAccountant;
+  const isHousehold = isOwner || isDependent;
   const [bills, setBills] = useState<Bill[]>([]);
   const [residents, setResidents] = useState<Resident[]>([]);
   const [issueForm, setIssueForm] = useState({ period: '2026-08', dueDate: '2026-08-15' });
@@ -296,7 +297,7 @@ export default function BillsPage() {
                     <StatusBadge status={b.status} />
                   </TableCell>
                   <TableCell>
-                    {b.status !== 'PAID' && b.status !== 'PENDING_REVIEW' && isOwner && (
+                    {b.status !== 'PAID' && b.status !== 'PENDING_REVIEW' && isHousehold && (
                       <Button variant="success" size="sm" onClick={() => openUpload(b)}>
                         رفع إثبات دفع
                       </Button>

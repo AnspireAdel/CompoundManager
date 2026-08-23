@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/api/client';
@@ -67,8 +67,16 @@ export default function ForceChangePasswordScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('@/assets/images/logo-only.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+
           <Text style={styles.title}>إعداد الحساب مطلوب</Text>
           <Text style={styles.subtitle}>
             {needsUsername && needsPassword
@@ -77,6 +85,7 @@ export default function ForceChangePasswordScreen() {
                 ? 'عيّن اسم مستخدم جديد للمتابعة.'
                 : 'تم إنشاء حسابك بكلمة مرور مؤقتة. عيّن كلمة مرور جديدة للمتابعة.'}
           </Text>
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           {needsUsername && (
@@ -88,6 +97,8 @@ export default function ForceChangePasswordScreen() {
                 onChangeText={setNewUsername}
                 autoCapitalize="none"
                 textAlign="right"
+                placeholder="أدخل اسم مستخدم جديد"
+                placeholderTextColor="#94A3B8"
               />
             </>
           )}
@@ -95,10 +106,24 @@ export default function ForceChangePasswordScreen() {
           {needsPassword && (
             <>
               <Text style={styles.label}>كلمة المرور الجديدة</Text>
-              <PasswordInput value={newPassword} onChangeText={setNewPassword} />
+              <PasswordInput
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="أدخل كلمة المرور الجديدة"
+                placeholderTextColor="#94A3B8"
+                style={styles.input}
+                inputStyle={{ paddingLeft: 44 }}
+              />
 
               <Text style={styles.label}>تأكيد كلمة المرور</Text>
-              <PasswordInput value={confirmPassword} onChangeText={setConfirmPassword} />
+              <PasswordInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="أعد إدخال كلمة المرور لتأكيدها"
+                placeholderTextColor="#94A3B8"
+                style={styles.input}
+                inputStyle={{ paddingLeft: 44 }}
+              />
             </>
           )}
 
@@ -106,8 +131,8 @@ export default function ForceChangePasswordScreen() {
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>حفظ والمتابعة</Text>}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => logout()}>
-            <Text style={styles.link}>تسجيل الخروج</Text>
+          <TouchableOpacity style={styles.logoutLink} onPress={() => logout()}>
+            <Text style={styles.logoutText}>تسجيل الخروج</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -116,15 +141,93 @@ export default function ForceChangePasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1e293b' },
-  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 24 },
-  title: { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
-  subtitle: { textAlign: 'center', color: '#64748b', marginBottom: 20, lineHeight: 22 },
-  label: { fontWeight: '600', marginBottom: 6, textAlign: 'right' },
-  input: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 16 },
-  button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  error: { backgroundColor: '#fee2e2', color: '#b91c1c', padding: 12, borderRadius: 8, marginBottom: 16, textAlign: 'center' },
-  link: { color: '#2563eb', textAlign: 'center', marginTop: 16, fontWeight: '600' },
+  container: {
+    flex: 1,
+    backgroundColor: '#FAFBFD',
+  },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    width: 80,
+    height: 100,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#024C59',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    textAlign: 'center',
+    color: '#64748B',
+    marginBottom: 24,
+    lineHeight: 20,
+    fontSize: 13,
+  },
+  label: {
+    fontWeight: '600',
+    color: '#334155',
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    color: '#0F172A',
+    textAlign: 'right',
+  },
+  button: {
+    backgroundColor: '#024C59',
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  error: {
+    backgroundColor: '#FEE2E2',
+    color: '#B91C1C',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    textAlign: 'center',
+    fontSize: 13,
+  },
+  logoutLink: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  logoutText: {
+    color: '#64748B',
+    fontWeight: '700',
+    fontSize: 14,
+  },
 });

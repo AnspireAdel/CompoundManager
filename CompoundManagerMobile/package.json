@@ -29,12 +29,15 @@
     "react-native-reanimated": "4.5.0",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
+    "react-native-svg": "^15.15.5",
     "react-native-web": "~0.21.0",
     "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -44,10 +47,10 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "build:apk": "EXPO_PUBLIC_API_URL=https://compoundmanager-2pm1.onrender.com/api eas build -p android --profile preview",
-    "build:apk:local": "EXPO_PUBLIC_API_URL=https://compoundmanager-2pm1.onrender.com/api npx expo prebuild --platform android --clean && cd android && ./gradlew assembleRelease",
-    "build:ios": "EXPO_PUBLIC_API_URL=https://compoundmanager-2pm1.onrender.com/api eas build -p ios --profile preview",
-    "build:ios:simulator": "EXPO_PUBLIC_API_URL=https://compoundmanager-2pm1.onrender.com/api eas build -p ios --profile preview-simulator"
+    "build:apk": "npx eas-cli build -p android --profile preview",
+    "build:apk:local": "npx expo prebuild --platform android --clean && cd android && (gradlew assembleRelease || ./gradlew assembleRelease)",
+    "build:ios": "npx eas-cli build -p ios --profile preview",
+    "build:ios:simulator": "npx eas-cli build -p ios --profile preview-simulator"
   },
   "private": true
 }

@@ -14,6 +14,9 @@ import {
   Linking,
   Image,
   Pressable,
+  Modal,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -29,17 +32,12 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { api, ChatGroupSummary, ChatMessage, resolveUploadUrl } from '@/api/client';
+import { api, ChatGroupSummary, ChatMessage, resolveUploadUrl, Resident } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import { BottomTabInset } from '@/constants/theme';
+import { Screen } from '@/components/screen';
 
-const PRIMARY = '#208AEF';
-const PRIMARY_DARK = '#1a6fc0';
-const BG = '#EEF3F8';
-const SURFACE = '#FFFFFF';
-const MUTED = '#64748B';
-const BORDER = '#E2E8F0';
-const DANGER = '#DC2626';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 function formatBytes(n?: number | null) {
   if (!n) return '';
@@ -152,7 +150,7 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
             activeOpacity={0.75}
           >
             <View style={[styles.audioIcon, mine && styles.audioIconMine]}>
-              <Ionicons name="play" size={16} color={mine ? PRIMARY : '#fff'} />
+              <Ionicons name="play" size={16} color={mine ? '#024C59' : '#fff'} />
             </View>
             <Text style={[styles.body, mine && styles.mineBody]}>رسالة صوتية</Text>
           </TouchableOpacity>
@@ -186,7 +184,7 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
                 startInLoadingState
                 renderLoading={() => (
                   <View style={styles.pdfLoading}>
-                    <ActivityIndicator color={PRIMARY} />
+                    <ActivityIndicator color="#024C59" />
                   </View>
                 )}
               />
@@ -205,7 +203,7 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
             activeOpacity={0.75}
           >
             <View style={[styles.fileIconWrap, mine && styles.fileIconWrapMine]}>
-              <Ionicons name="document-text-outline" size={22} color={mine ? '#fff' : PRIMARY} />
+              <Ionicons name="document-text-outline" size={22} color={mine ? '#fff' : '#024C59'} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.fileName, mine && styles.mineBody]} numberOfLines={2}>
@@ -217,7 +215,7 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
                 </Text>
               )}
             </View>
-            <Ionicons name="open-outline" size={18} color={mine ? 'rgba(255,255,255,0.85)' : MUTED} />
+            <Ionicons name="open-outline" size={18} color={mine ? 'rgba(255,255,255,0.85)' : '#64748B'} />
           </TouchableOpacity>
         ) : (
           <Text style={[styles.body, mine && styles.mineBody]}>{item.body}</Text>
@@ -243,11 +241,14 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
 }
 
 export default function ChatsScreen() {
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
   const insets = useSafeAreaInsets();
   const tabPad = BottomTabInset + Math.max(insets.bottom, 0);
-  const isDependent = user?.role === 'DEPENDENT';
+  const isDependent = authUser?.role === 'DEPENDENT';
+  const isSuperAdmin = authUser?.role === 'SUPERADMIN';
+
   const [groups, setGroups] = useState<ChatGroupSummary[]>([]);
+  const [residents, setResidents] = useState<Resident[]>([]);
   const [selected, setSelected] = useState<ChatGroupSummary | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
@@ -261,11 +262,31 @@ export default function ChatsScreen() {
   const recorderState = useAudioRecorderState(audioRecorder);
   const recording = recorderState.isRecording;
 
+  // Add Group State
+  const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [showMembersPicker, setShowMembersPicker] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupDesc, setGroupDesc] = useState('');
+  const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+
+  // Leave Group Confirm State
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [leavingGroup, setLeavingGroup] = useState(false);
+
   const loadGroups = useCallback(async () => {
-    const list = await api.getChats();
-    setGroups(list);
-    return list;
-  }, []);
+    try {
+      const list = await api.getChats();
+      setGroups(list);
+      if (authUser?.role === 'SUPERADMIN' || authUser?.role === 'ADMIN' || authUser?.role === 'ACCOUNTANT') {
+        const listRes = await api.getResidents();
+        setResidents(listRes.filter((r) => r.user !== null));
+      }
+      return list;
+    } catch (e) {
+      console.error(e);
+    }
+  }, [authUser?.role]);
 
   const loadMessages = useCallback(async (id: number) => {
     const msgs = await api.getChatMessages(id);
@@ -307,7 +328,7 @@ export default function ChatsScreen() {
     setRefreshing(true);
     try {
       const list = await loadGroups();
-      if (selected) {
+      if (selected && list) {
         const updated = list.find((g) => g.id === selected.id) || null;
         setSelected(updated);
         if (updated?.isMember) await loadMessages(updated.id);
@@ -333,10 +354,12 @@ export default function ChatsScreen() {
     if (isDependent) return;
     try {
       await api.requestChatJoin(g.id);
-      Alert.alert('تم', 'تم إرسال طلب الانضمام وبانتظار موافقة المدير الأعلى');
+      Alert.alert('تم بنجاح', 'تم إرسال طلب الانضمام وبانتظار موافقة المدير الأعلى.');
       const list = await loadGroups();
-      const updated = list.find((x) => x.id === g.id);
-      if (updated) setSelected(updated);
+      if (list) {
+        const updated = list.find((x) => x.id === g.id);
+        if (updated) setSelected(updated);
+      }
     } catch (e) {
       Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل طلب الانضمام');
     }
@@ -344,23 +367,19 @@ export default function ChatsScreen() {
 
   async function handleLeave() {
     if (!selected) return;
-    Alert.alert('تأكيد', 'مغادرة هذه المجموعة؟', [
-      { text: 'إلغاء', style: 'cancel' },
-      {
-        text: 'مغادرة',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.leaveChat(selected.id);
-            setSelected(null);
-            setMessages([]);
-            await loadGroups();
-          } catch (e) {
-            Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل المغادرة');
-          }
-        },
-      },
-    ]);
+    setLeavingGroup(true);
+    try {
+      await api.leaveChat(selected.id);
+      setSelected(null);
+      setMessages([]);
+      await loadGroups();
+      setShowLeaveConfirm(false);
+      Alert.alert('تم', 'لقد غادرت المجموعة بنجاح.');
+    } catch (e) {
+      Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل مغادرة المجموعة');
+    } finally {
+      setLeavingGroup(false);
+    }
   }
 
   async function handleSend() {
@@ -479,6 +498,46 @@ export default function ChatsScreen() {
     }
   }
 
+  function openCreate() {
+    setGroupName('');
+    setGroupDesc('');
+    setSelectedMemberIds([]);
+    setShowAddGroupModal(true);
+  }
+
+  async function createGroup() {
+    if (!groupName) {
+      Alert.alert('تنبيه', 'يرجى إدخال اسم المجموعة');
+      return;
+    }
+    setCreatingGroup(true);
+    try {
+      await api.createChatGroup({
+        name: groupName.trim(),
+        description: groupDesc.trim() || null,
+        memberIds: selectedMemberIds,
+      });
+      Alert.alert('تم بنجاح', 'تم إنشاء مجموعة المحادثة بنجاح.');
+      setGroupName('');
+      setGroupDesc('');
+      setSelectedMemberIds([]);
+      setShowAddGroupModal(false);
+      loadGroups();
+    } catch (e) {
+      Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل إنشاء المجموعة');
+    } finally {
+      setCreatingGroup(false);
+    }
+  }
+
+  function toggleMemberSelection(userId: number) {
+    if (selectedMemberIds.includes(userId)) {
+      setSelectedMemberIds(selectedMemberIds.filter((id) => id !== userId));
+    } else {
+      setSelectedMemberIds([...selectedMemberIds, userId]);
+    }
+  }
+
   const memberLabel = useMemo(() => {
     if (!selected) return '';
     if (selected.isMember) return `${selected.membersCount} أعضاء`;
@@ -489,50 +548,52 @@ export default function ChatsScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={PRIMARY} />
+        <ActivityIndicator size="large" color="#024C59" />
       </View>
     );
   }
 
+  // INNER ROOM CHAT SCREEN
   if (selected) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.roomContainer} edges={['top']}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={8}
         >
+          {/* Header Bar */}
           <View style={styles.chatHeader}>
             <TouchableOpacity style={styles.headerIconBtn} onPress={() => setSelected(null)}>
-              <Ionicons name="chevron-forward" size={22} color={PRIMARY} />
+              <Ionicons name="chevron-forward" size={22} color="#024C59" />
             </TouchableOpacity>
-            <View style={styles.headerAvatar}>
-              <Text style={styles.headerAvatarText}>{groupInitials(selected.name)}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
+            
+            <View style={{ flex: 1, marginRight: 8 }}>
               <Text style={styles.chatTitle} numberOfLines={1}>{selected.name}</Text>
               <Text style={styles.chatSubtitle}>{memberLabel}</Text>
             </View>
+
             {selected.isMember && (
-              <TouchableOpacity style={styles.headerIconBtn} onPress={handleLeave}>
-                <Ionicons name="exit-outline" size={20} color={DANGER} />
+              <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowLeaveConfirm(true)}>
+                <Ionicons name="exit-outline" size={20} color="#EF4444" />
               </TouchableOpacity>
             )}
           </View>
 
+          {/* Messages list / Join view */}
           {!selected.isMember ? (
             <View style={styles.center}>
               <View style={styles.emptyIcon}>
-                <Ionicons name="chatbubbles-outline" size={36} color={PRIMARY} />
+                <Ionicons name="chatbubbles-outline" size={36} color="#024C59" />
               </View>
               <Text style={styles.hint}>
                 {selected.myJoinRequest?.status === 'PENDING'
-                  ? 'طلب الانضمام قيد المراجعة'
-                  : 'لست عضواً في هذه المجموعة'}
+                  ? 'طلب الانضمام قيد المراجعة حالياً من الإدارة.'
+                  : 'أنت لست عضواً في هذه المجموعة حالياً.'}
               </Text>
               {selected.canJoin && !isDependent && (
                 <TouchableOpacity style={styles.joinBtn} onPress={() => handleJoin(selected)}>
-                  <Text style={styles.joinBtnText}>طلب انضمام</Text>
+                  <Text style={styles.joinBtnText}>طلب انضمام للمجموعة</Text>
                 </TouchableOpacity>
               )}
               {isDependent && !selected.isMember && (
@@ -547,22 +608,23 @@ export default function ChatsScreen() {
                 keyExtractor={(item) => String(item.id)}
                 contentContainerStyle={styles.messages}
                 onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#024C59" />}
                 ListEmptyComponent={
                   <View style={styles.emptyMessages}>
                     <Ionicons name="chatbubble-ellipses-outline" size={32} color="#94A3B8" />
-                    <Text style={styles.hint}>لا رسائل بعد — ابدأ المحادثة</Text>
+                    <Text style={styles.hint}>لا توجد أي رسائل في المجموعة بعد.</Text>
                   </View>
                 }
                 renderItem={({ item }) => (
-                  <MessageBubble item={item} mine={item.userId === user?.id} />
+                  <MessageBubble item={item} mine={item.userId === authUser?.id} />
                 )}
               />
 
+              {/* Composer Inputs */}
               {recording ? (
                 <View style={[styles.recordBar, { paddingBottom: 12 + tabPad }]}>
                   <TouchableOpacity style={styles.recordCancel} onPress={cancelRecording}>
-                    <Ionicons name="trash-outline" size={20} color={DANGER} />
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
                   </TouchableOpacity>
                   <View style={styles.recordInfo}>
                     <View style={styles.recordDot} />
@@ -584,11 +646,11 @@ export default function ChatsScreen() {
               ) : (
                 <View style={[styles.composer, { paddingBottom: 10 + tabPad }]}>
                   <Pressable
-                    style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed, (sending) && styles.disabled]}
+                    style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed, sending && styles.disabled]}
                     onPress={handleAttach}
                     disabled={sending}
                   >
-                    <Ionicons name="attach" size={22} color={PRIMARY} />
+                    <Ionicons name="attach-outline" size={22} color="#024C59" />
                   </Pressable>
                   <TextInput
                     style={styles.input}
@@ -618,184 +680,397 @@ export default function ChatsScreen() {
                       onPress={toggleRecording}
                       disabled={sending}
                     >
-                      <Ionicons name="mic" size={22} color={PRIMARY} />
+                      <Ionicons name="mic-outline" size={22} color="#024C59" />
                     </Pressable>
                   )}
                 </View>
               )}
             </>
           )}
+
+          {/* LEAVE GROUP CONFIRM MODAL */}
+          <Modal
+            visible={showLeaveConfirm}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowLeaveConfirm(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.confirmCard}>
+                <Ionicons name="exit-outline" size={32} color="#EF4444" style={{ marginBottom: 12 }} />
+                <Text style={styles.confirmTitle}>مغادرة المجموعة</Text>
+                <Text style={styles.confirmSubtext}>هل أنت متأكد من مغادرة المجموعة؟</Text>
+                <Text style={styles.confirmTargetVal}>
+                  "{selected.name}"
+                </Text>
+                
+                <View style={styles.confirmActions}>
+                  <TouchableOpacity
+                    style={[styles.confirmBtn, styles.confirmBtnYes, { backgroundColor: '#EF4444' }]}
+                    onPress={handleLeave}
+                    disabled={leavingGroup}
+                  >
+                    {leavingGroup ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <Text style={styles.confirmBtnText}>مغادرة</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmBtn, styles.confirmBtnNo]}
+                    onPress={() => setShowLeaveConfirm(false)}
+                  >
+                    <Text style={styles.confirmBtnTextNo}>إلغاء</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
 
+  // GROUP LIST SCREEN VIEW
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.listHeader}>
-        <Text style={styles.title}>المحادثات</Text>
-        <Text style={styles.listSubtitle}>{groups.length} مجموعة</Text>
-      </View>
-      <FlatList
-        data={groups}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={[styles.list, { paddingBottom: 24 + tabPad }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
-        ListEmptyComponent={
-          <View style={styles.emptyMessages}>
-            <Ionicons name="people-outline" size={36} color="#94A3B8" />
-            <Text style={styles.hint}>لا توجد مجموعات محادثة بعد</Text>
+    <Screen
+      title="المحادثات"
+      headerShown={false} // Custom header
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await loadGroups().catch(console.error);
+        setRefreshing(false);
+      }}
+    >
+      {/* 1. CUSTOM TOP HEADER */}
+      <View style={styles.topHeader}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.headerIconBtn}>
+            <Ionicons name="notifications-outline" size={24} color="#024C59" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.profileSection}>
+          <View style={styles.profileTextContainer}>
+            <Text style={styles.greetText}>مرحباً،</Text>
+            <Text style={styles.userName}>{authUser?.name || 'مستخدم'}</Text>
           </View>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => openGroup(item)} activeOpacity={0.75}>
-            <View style={styles.cardRow}>
-              <View style={styles.cardAvatar}>
-                <Text style={styles.cardAvatarText}>{groupInitials(item.name)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                {!!item.description && (
-                  <Text style={styles.cardDesc} numberOfLines={1}>{item.description}</Text>
-                )}
-                <View style={styles.cardMetaRow}>
-                  <View style={[
-                    styles.badge,
-                    item.isMember ? styles.badgeMember : styles.badgeGuest,
-                  ]}>
-                    <Text style={[
-                      styles.badgeText,
-                      item.isMember ? styles.badgeTextMember : styles.badgeTextGuest,
-                    ]}>
-                      {item.isMember
-                        ? `عضو · ${item.membersCount}`
-                        : item.myJoinRequest?.status === 'PENDING'
-                          ? 'قيد المراجعة'
-                          : 'متاحة'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              <Ionicons name="chevron-back" size={18} color="#94A3B8" />
-            </View>
-            {!item.isMember && item.canJoin && !isDependent && (
-              <TouchableOpacity
-                style={styles.joinBtnSmall}
-                onPress={() => handleJoin(item)}
-              >
-                <Text style={styles.joinBtnText}>طلب انضمام</Text>
-              </TouchableOpacity>
-            )}
+          <Ionicons name="person-circle" size={44} color="#024C59" />
+        </View>
+      </View>
+
+      {/* 2. SUBHEADER & ACTIONS */}
+      <View style={styles.subHeader}>
+        <Text style={styles.pageTitle}>المحادثات</Text>
+        {isSuperAdmin && (
+          <TouchableOpacity style={styles.addBtn} onPress={openCreate}>
+            <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            <Text style={styles.addBtnText}>إضافة مجموعة</Text>
           </TouchableOpacity>
         )}
-      />
-    </SafeAreaView>
+      </View>
+
+      {/* 3. GROUP SECTION HEADER */}
+      <Text style={styles.sectionSubtitle}>المجموعات</Text>
+
+      {/* 4. CHATS LIST CARDS */}
+      <View style={styles.listContainer}>
+        {groups.length === 0 ? (
+          <View style={styles.emptyView}>
+            <Ionicons name="chatbubbles-outline" size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
+            <Text style={styles.emptyText}>لا توجد أي مجموعات محادثة مسجلة</Text>
+          </View>
+        ) : (
+          groups.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.cardItem}
+              onPress={() => openGroup(item)}
+              activeOpacity={0.75}
+            >
+              <View style={styles.cardRow}>
+                <Ionicons name="chevron-back" size={16} color="#94A3B8" style={{ marginRight: 6 }} />
+                
+                <Text style={styles.cardCount}>
+                  {item.membersCount} أعضاء
+                </Text>
+
+                <View style={styles.cardTextContainer}>
+                  <Text style={styles.cardTitle}>{item.name}</Text>
+                </View>
+
+                <Ionicons name="grid-outline" size={18} color="#64748B" style={{ marginLeft: 10 }} />
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </View>
+
+      {/* 5. ADD GROUP SHEET MODAL */}
+      <Modal
+        visible={showAddGroupModal}
+        animationType="slide"
+        onRequestClose={() => setShowAddGroupModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+        >
+          <View style={styles.formHeader}>
+            <TouchableOpacity onPress={() => setShowAddGroupModal(false)}>
+              <Ionicons name="chevron-forward-outline" size={24} color="#024C59" />
+            </TouchableOpacity>
+            <Text style={styles.formHeaderTitle}>إضافة مجموعة</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <ScrollView style={styles.formScroll} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+            <Text style={styles.fieldLabel}>اسم المجموعة</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={groupName}
+              onChangeText={setGroupName}
+              placeholder="ادخل اسم المجموعة"
+              placeholderTextColor="#94A3B8"
+            />
+
+            <Text style={[styles.fieldLabel, { marginTop: 12 }]}>الوصف</Text>
+            <TextInput
+              style={[styles.fieldInput, { height: 100, textAlignVertical: 'top', paddingVertical: 10 }]}
+              value={groupDesc}
+              onChangeText={setGroupDesc}
+              placeholder="ادخل الوصف..."
+              placeholderTextColor="#94A3B8"
+              multiline={true}
+            />
+
+            <Text style={[styles.fieldLabel, { marginTop: 12 }]}>أعضاء</Text>
+            <TouchableOpacity style={styles.selectTrigger} onPress={() => setShowMembersPicker(true)}>
+              <Text style={styles.selectTriggerText}>
+                {selectedMemberIds.length > 0 ? `تم تحديد ${selectedMemberIds.length} عضو` : 'اضف أعضاء...'}
+              </Text>
+              <Ionicons name="chevron-down-outline" size={16} color="#64748B" />
+            </TouchableOpacity>
+
+            {/* Action buttons */}
+            <View style={styles.formActionsRow}>
+              <TouchableOpacity style={styles.submitBtn} onPress={createGroup} disabled={creatingGroup}>
+                {creatingGroup ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.submitBtnText}>انشاء المجموعة</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAddGroupModal(false)}>
+                <Text style={styles.cancelBtnText}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* 6. MULTI-SELECT MEMBERS PICKER */}
+      <Modal
+        visible={showMembersPicker}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMembersPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.pickerCard}>
+            <Text style={styles.pickerTitle}>اختر الأعضاء</Text>
+            <ScrollView style={{ maxHeight: 250 }}>
+              {residents.map((r) => {
+                const uId = r.user?.id;
+                if (!uId) return null;
+                const isSelected = selectedMemberIds.includes(uId);
+                return (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={[styles.pickerItem, isSelected && styles.pickerItemActive]}
+                    onPress={() => toggleMemberSelection(uId)}
+                  >
+                    <Ionicons
+                      name={isSelected ? 'checkbox' : 'square-outline'}
+                      size={18}
+                      color="#024C59"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[styles.pickerItemText, isSelected && styles.pickerItemTextActive]}>
+                      {r.residentName} ({r.area}-{r.buildingNo})
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity style={styles.closePickerBtn} onPress={() => setShowMembersPicker(false)}>
+              <Text style={styles.closePickerBtnText}>موافق</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  listHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
+  roomContainer: {
+    flex: 1,
+    backgroundColor: '#EEF3F8',
   },
-  title: { fontSize: 26, fontWeight: '800', textAlign: 'right', color: '#0F172A' },
-  listSubtitle: { textAlign: 'right', color: MUTED, marginTop: 2, fontSize: 13 },
-  list: { padding: 16, paddingTop: 10 },
-  card: {
-    backgroundColor: SURFACE,
-    borderRadius: 16,
-    padding: 14,
+  topHeader: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 16,
+  },
+  profileSection: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+  },
+  profileTextContainer: {
+    marginRight: 10,
+    alignItems: 'flex-end',
+  },
+  greetText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  userName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  subHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  pageTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+    textAlign: 'right',
+  },
+  addBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: '#024C59',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  addBtnText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#64748B',
+    textAlign: 'right',
     marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  listContainer: {
+    gap: 8,
+    paddingBottom: 24,
+  },
+  cardItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: '#E2E8F0',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     shadowColor: '#0F172A',
     shadowOpacity: 0.04,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    elevation: 2,
   },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  cardAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#DBEAFE',
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardCount: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  cardTextContainer: {
+    flex: 1,
+    alignItems: 'flex-end',
+    marginRight: 12,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#024C59',
+  },
+  emptyView: {
+    paddingVertical: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardAvatarText: { color: PRIMARY_DARK, fontWeight: '800', fontSize: 15 },
-  cardTitle: { fontSize: 16, fontWeight: '700', textAlign: 'right', color: '#0F172A' },
-  cardDesc: { color: MUTED, textAlign: 'right', marginTop: 3, fontSize: 13 },
-  cardMetaRow: { marginTop: 8, alignItems: 'flex-end' },
-  badge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+  emptyText: {
+    fontSize: 13,
+    color: '#64748B',
   },
-  badgeMember: { backgroundColor: '#DBEAFE' },
-  badgeGuest: { backgroundColor: '#F1F5F9' },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  badgeTextMember: { color: PRIMARY_DARK },
-  badgeTextGuest: { color: MUTED },
-  hint: { textAlign: 'center', color: MUTED, marginTop: 12, lineHeight: 20 },
+
+  // INNER ROOM STYLES
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  hint: { textAlign: 'center', color: '#64748B', marginTop: 12, lineHeight: 20 },
   emptyIcon: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#E6F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
-  emptyMessages: { alignItems: 'center', paddingTop: 48 },
   joinBtn: {
     marginTop: 16,
-    backgroundColor: PRIMARY,
-    borderRadius: 12,
+    backgroundColor: '#024C59',
+    borderRadius: 10,
     paddingHorizontal: 24,
     paddingVertical: 12,
   },
-  joinBtnSmall: {
-    marginTop: 12,
-    alignSelf: 'flex-end',
-    backgroundColor: PRIMARY,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
   joinBtnText: { color: '#fff', fontWeight: '700' },
   chatHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: SURFACE,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+    borderBottomColor: '#F1F5F9',
   },
   headerIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F3F7FA',
   },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerAvatarText: { color: PRIMARY_DARK, fontWeight: '800' },
-  chatTitle: { fontWeight: '700', fontSize: 16, textAlign: 'right', color: '#0F172A' },
-  chatSubtitle: { fontSize: 12, color: MUTED, textAlign: 'right', marginTop: 1 },
+  chatTitle: { fontWeight: '800', fontSize: 15, textAlign: 'right', color: '#1E293B' },
+  chatSubtitle: { fontSize: 11, color: '#64748B', textAlign: 'right', marginTop: 2 },
   messages: { padding: 14, paddingBottom: 10, flexGrow: 1 },
   bubbleWrap: { marginBottom: 12 },
   mineWrap: { alignItems: 'flex-start' },
@@ -803,21 +1078,21 @@ const styles = StyleSheet.create({
   bubble: {
     maxWidth: '82%',
     borderRadius: 18,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
   },
   mine: {
-    backgroundColor: PRIMARY,
+    backgroundColor: '#024C59',
     borderBottomLeftRadius: 6,
   },
   their: {
-    backgroundColor: SURFACE,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: '#E2E8F0',
     borderBottomRightRadius: 6,
   },
-  sender: { fontSize: 11, color: MUTED, marginBottom: 4, textAlign: 'right', fontWeight: '600' },
-  body: { fontSize: 15, color: '#0F172A', textAlign: 'right', lineHeight: 22 },
+  sender: { fontSize: 11, color: '#64748B', marginBottom: 4, textAlign: 'right', fontWeight: '600' },
+  body: { fontSize: 14, color: '#1E293B', textAlign: 'right', lineHeight: 21 },
   mineBody: { color: '#fff' },
   mineMeta: { color: 'rgba(255,255,255,0.75)' },
   mediaBlock: { gap: 6 },
@@ -836,7 +1111,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: '#E2E8F0',
   },
   pdfWeb: { flex: 1, backgroundColor: '#fff' },
   pdfLoading: {
@@ -847,7 +1122,7 @@ const styles = StyleSheet.create({
   },
   fileLink: {
     fontSize: 12,
-    color: PRIMARY,
+    color: '#024C59',
     textDecorationLine: 'underline',
     textAlign: 'right',
   },
@@ -864,13 +1139,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#E6F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   fileIconWrapMine: { backgroundColor: 'rgba(255,255,255,0.2)' },
-  fileName: { fontSize: 14, fontWeight: '600', textAlign: 'right', color: '#0F172A' },
-  fileMeta: { fontSize: 11, color: MUTED, textAlign: 'right', marginTop: 2 },
+  fileName: { fontSize: 13, fontWeight: '600', textAlign: 'right', color: '#1E293B' },
+  fileMeta: { fontSize: 11, color: '#64748B', textAlign: 'right', marginTop: 2 },
   audioRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -882,28 +1157,29 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: PRIMARY,
+    backgroundColor: '#024C59',
     alignItems: 'center',
     justifyContent: 'center',
   },
   audioIconMine: { backgroundColor: '#fff' },
   time: { fontSize: 10, color: '#94A3B8', marginTop: 6, textAlign: 'left' },
   mineTime: { color: 'rgba(255,255,255,0.7)' },
+  emptyMessages: { alignItems: 'center', paddingTop: 48 },
   composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: SURFACE,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: BORDER,
+    borderTopColor: '#F1F5F9',
   },
   iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#EFF6FF',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F7FA',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -911,45 +1187,46 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 22,
+    borderColor: '#E2E8F0',
+    borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     maxHeight: 110,
-    fontSize: 15,
-    backgroundColor: '#F8FAFC',
-    color: '#0F172A',
+    fontSize: 14,
+    backgroundColor: '#FAFBFD',
+    color: '#1E293B',
+    textAlign: 'right',
   },
   sendCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: PRIMARY,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#024C59',
     alignItems: 'center',
     justifyContent: 'center',
   },
   disabled: { opacity: 0.45 },
   recordBar: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    backgroundColor: SURFACE,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: BORDER,
+    borderTopColor: '#F1F5F9',
   },
   recordCancel: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#FEF2F2',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEE2E2',
     alignItems: 'center',
     justifyContent: 'center',
   },
   recordInfo: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 8,
     justifyContent: 'center',
@@ -958,16 +1235,232 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: DANGER,
+    backgroundColor: '#EF4444',
   },
-  recordTimer: { fontWeight: '800', color: DANGER, fontVariant: ['tabular-nums'] },
-  recordHint: { color: MUTED, fontSize: 13 },
+  recordTimer: { fontWeight: '800', color: '#EF4444', fontVariant: ['tabular-nums'] },
+  recordHint: { color: '#64748B', fontSize: 13 },
   recordSend: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: PRIMARY,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#024C59',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // DIALOG CONFIRM MODAL
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmCard: {
+    width: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  confirmTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 8,
+  },
+  confirmSubtext: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  confirmTargetVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#024C59',
+    marginTop: 10,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmBtnYes: {
+    backgroundColor: '#024C59',
+  },
+  confirmBtnNo: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  confirmBtnText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  confirmBtnTextNo: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '700',
+  },
+
+  // SHEET FORM MODAL STYLES
+  formHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+  },
+  formHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  formScroll: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    textAlign: 'right',
+    marginBottom: 6,
+  },
+  fieldInput: {
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FAFBFD',
+    paddingHorizontal: 12,
+    fontSize: 13,
+    color: '#1E293B',
+    textAlign: 'right',
+  },
+  selectTrigger: {
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FAFBFD',
+    paddingHorizontal: 12,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectTriggerText: {
+    fontSize: 13,
+    color: '#1E293B',
+  },
+  formActionsRow: {
+    flexDirection: 'column',
+    gap: 10,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  submitBtn: {
+    height: 46,
+    backgroundColor: '#024C59',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  submitBtnText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  cancelBtn: {
+    height: 46,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '700',
+  },
+
+  // CUSTOM SELECT PICKER LISTS
+  pickerCard: {
+    width: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  pickerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+    textAlign: 'center',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 8,
+  },
+  pickerItem: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#FAFBFD',
+  },
+  pickerItemActive: {
+    backgroundColor: '#E6F4F6',
+    borderRadius: 8,
+  },
+  pickerItemText: {
+    fontSize: 13,
+    color: '#475569',
+    textAlign: 'right',
+  },
+  pickerItemTextActive: {
+    color: '#024C59',
+    fontWeight: '700',
+  },
+  closePickerBtn: {
+    marginTop: 16,
+    height: 40,
+    backgroundColor: '#FAFBFD',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closePickerBtnText: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '700',
   },
 });

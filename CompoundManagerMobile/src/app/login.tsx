@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
-  KeyboardAvoidingView, Platform, ScrollView,
+  KeyboardAvoidingView, Platform, ScrollView, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -31,27 +31,51 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <Text style={styles.title}>إدارة المجمع السكني</Text>
-          <Text style={styles.subtitle}>تسجيل الدخول إلى النظام</Text>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('@/assets/images/logo-only.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Text style={styles.label}>اسم المستخدم</Text>
-          <TextInput style={styles.input} value={username} onChangeText={setUsername} autoCapitalize="none" textAlign="right" />
+          <TextInput
+            style={styles.input}
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            textAlign="right"
+            placeholder="أدخل اسم المستخدم الخاص بك"
+            placeholderTextColor="#94A3B8"
+          />
 
           <Text style={styles.label}>كلمة المرور</Text>
-          <PasswordInput value={password} onChangeText={setPassword} />
+          <PasswordInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••••••"
+            placeholderTextColor="#94A3B8"
+            style={styles.input}
+            inputStyle={{ paddingLeft: 44 }}
+          />
+
+          <TouchableOpacity style={styles.forgotPasswordLink} onPress={() => router.push('/forgot-password')}>
+            <Text style={styles.forgotPasswordText}>نسيت كلمة المرور؟</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>دخول</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>تسجيل الدخول</Text>}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push('/forgot-password')}>
-            <Text style={styles.link}>نسيت كلمة المرور؟</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/register')}>
-            <Text style={styles.link}>تسجيل حساب جديد</Text>
+          <TouchableOpacity style={styles.registerLink} onPress={() => router.push('/register')}>
+            <Text style={styles.registerText}>
+              مستخدم جديد؟ <Text style={styles.registerAction}>سجل الآن</Text>
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -60,15 +84,94 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1e293b' },
-  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 24 },
-  title: { fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
-  subtitle: { textAlign: 'center', color: '#64748b', marginBottom: 20 },
-  label: { fontWeight: '600', marginBottom: 6, textAlign: 'right' },
-  input: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 16 },
-  button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 8 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  error: { backgroundColor: '#fee2e2', color: '#b91c1c', padding: 12, borderRadius: 8, marginBottom: 16, textAlign: 'center' },
-  link: { color: '#2563eb', textAlign: 'center', marginTop: 14, fontWeight: '600' },
+  container: {
+    flex: 1,
+    backgroundColor: '#FAFBFD',
+  },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logo: {
+    width: 100,
+    height: 120,
+  },
+  label: {
+    fontWeight: '600',
+    color: '#334155',
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    color: '#0F172A',
+    textAlign: 'right',
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-start',
+    marginTop: -8,
+    marginBottom: 24,
+  },
+  forgotPasswordText: {
+    color: '#024C59',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  button: {
+    backgroundColor: '#024C59',
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  error: {
+    backgroundColor: '#FEE2E2',
+    color: '#B91C1C',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  registerLink: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  registerText: {
+    color: '#64748B',
+    fontSize: 14,
+  },
+  registerAction: {
+    color: '#024C59',
+    fontWeight: '700',
+  },
 });
+

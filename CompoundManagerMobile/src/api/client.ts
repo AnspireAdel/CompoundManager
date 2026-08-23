@@ -216,6 +216,7 @@ export interface Expense {
   expenseDate: string;
   notes?: string | null;
   residentId?: number | null;
+  scope: 'COMPOUND' | 'UNIT';
   expenseType?: ExpenseType;
   resident?: Partial<Resident> | null;
 }
@@ -254,6 +255,8 @@ export interface DashboardStats {
     rows: Array<{ monthKey: string; label: string; total: number; byType: Record<string, number> }>;
     totals: { total: number; byType: Record<string, number> };
   };
+  residentTypeBreakdown?: Array<{ name: string; count: number }>;
+  monthlyTrend?: Array<{ month: string; label: string; issued: number; collected: number }>;
   overdueBills: Bill[];
 }
 
@@ -606,6 +609,11 @@ export const api = {
 
   markAllRead: () => request('/notifications/read-all', { method: 'PATCH' }),
 
+  sendPaymentReminders: () =>
+    request<{ dueReminders: number; overdueMarked: number }>('/notifications/run-reminders', {
+      method: 'POST',
+    }),
+
   getContactRequests: (params?: Record<string, string>) => {
     const q = params ? '?' + new URLSearchParams(params).toString() : '';
     return request<ContactRequest[]>(`/contact-requests${q}`);
@@ -660,6 +668,15 @@ export const api = {
     request<{ message: string }>(`/dependents/${id}/reset-password`, { method: 'POST' }),
 
   getChats: () => request<ChatGroupSummary[]>('/chats'),
+
+  createChatGroup: (data: { name: string; description?: string | null; memberIds?: number[] }) =>
+    request<ChatGroupSummary>('/chats', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deleteChatGroup: (id: number) =>
+    request<void>(`/chats/${id}`, { method: 'DELETE' }),
 
   requestChatJoin: (id: number) =>
     request<ChatJoinRequest>(`/chats/${id}/join`, { method: 'POST' }),

@@ -10,6 +10,7 @@ export function Screen({
   refreshing,
   right,
   back,
+  headerShown = true,
 }: {
   title: string;
   children: ReactNode;
@@ -17,21 +18,24 @@ export function Screen({
   refreshing?: boolean;
   right?: ReactNode;
   back?: boolean;
+  headerShown?: boolean;
 }) {
   const router = useRouter();
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        {back ? (
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backText}>رجوع</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.backBtn} />
-        )}
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.right}>{right}</View>
-      </View>
+      {headerShown && (
+        <View style={styles.header}>
+          {back ? (
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Text style={styles.backText}>رجوع</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.backBtn} />
+          )}
+          <Text style={styles.title}>{title}</Text>
+          <View style={styles.right}>{right}</View>
+        </View>
+      )}
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={

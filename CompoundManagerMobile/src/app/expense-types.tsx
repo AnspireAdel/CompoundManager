@@ -1,45 +1,595 @@
 import { useCallback, useState } from 'react';
-import { Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Alert, Text, TextInput, TouchableOpacity, View, StyleSheet,
+  ScrollView, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions
+} from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { api, ExpenseType } from '@/api/client';
-import { Screen, ui } from '@/components/screen';
+import { Screen } from '@/components/screen';
+import { useAuth } from '@/context/AuthContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ExpenseTypesScreen() {
+  const { isStaff, user: authUser } = useAuth();
   const [types, setTypes] = useState<ExpenseType[]>([]);
-  const [name, setName] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
+  // Form Modal State (Add/Edit)
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [typeName, setTypeName] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Delete Confirm State
+  const [deleteTarget, setDeleteTarget] = useState<ExpenseType | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Toggle Confirm State
+  const [toggleTarget, setToggleTarget] = useState<ExpenseType | null>(null);
+  const [toggling, setToggling] = useState(false);
+
   async function load() {
-    setTypes(await api.getExpenseTypes(true));
+    try {
+      setTypes(await api.getExpenseTypes(true));
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   useFocusEffect(useCallback(() => { load().catch(console.error); }, []));
 
+  function openCreate() {
+    setEditingId(null);
+    setTypeName('');
+    setShowFormModal(true);
+  }
+
+  function openEdit(t: ExpenseType) {
+    setEditingId(t.id);
+    setTypeName(t.name);
+    setShowFormModal(true);
+  }
+
+  async function save() {
+    if (!typeName.trim()) {
+      Alert.alert('تنبيه', 'يرجى إدخال اسم النوع');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingId) {
+        await api.updateExpenseType(editingId, { name: typeName.trim() });
+        Alert.alert('تم بنجاح', 'تم تعديل نوع المصروف بنجاح.');
+      } else {
+        await api.createExpenseType(typeName.trim());
+        Alert.alert('تم بنجاح', 'تم إضافة نوع المصروف بنجاح.');
+      }
+      setShowFormModal(false);
+      load();
+    } catch (e) {
+      Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل الحفظ');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function triggerDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.deleteExpenseType(deleteTarget.id);
+      Alert.alert('تم بنجاح', 'تم حذف نوع المصروف بنجاح.');
+      setDeleteTarget(null);
+      load();
+    } catch (e) {
+      Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل الحذف');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function triggerToggle() {
+    if (!toggleTarget) return;
+    setToggling(true);
+    try {
+      await api.toggleExpenseType(toggleTarget.id);
+      Alert.alert(
+        'تم بنجاح',
+        `تم ${toggleTarget.activeFlag === 'Y' ? 'إيقاف' : 'تفعيل'} نوع المصروف بنجاح.`
+      );
+      setToggleTarget(null);
+      load();
+    } catch (e) {
+      Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل تغيير الحالة');
+    } finally {
+      setToggling(false);
+    }
+  }
+
   return (
-    <Screen title="أنواع المصاريف" back refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }}>
-      <View style={ui.card}>
-        <TextInput style={ui.input} value={name} onChangeText={setName} placeholder="اسم النوع" />
-        <TouchableOpacity style={ui.button} onPress={async () => {
-          try {
-            await api.createExpenseType(name.trim());
-            setName('');
-            load();
-          } catch (e) {
-            Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل');
-          }
-        }}>
-          <Text style={ui.buttonText}>إضافة</Text>
-        </TouchableOpacity>
-      </View>
-      {types.map((t) => (
-        <View key={t.id} style={ui.card}>
-          <Text style={ui.name}>{t.name}</Text>
-          <Text style={ui.meta}>{t.activeFlag === 'Y' ? 'نشط' : 'موقوف'}</Text>
-          <TouchableOpacity style={[ui.outline, { marginTop: 8 }]} onPress={async () => { await api.toggleExpenseType(t.id); load(); }}>
-            <Text style={ui.outlineText}>تفعيل / إيقاف</Text>
+    <Screen
+      title="أنواع المصاريف"
+      back
+      headerShown={false} // Custom header
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load().catch(console.error);
+        setRefreshing(false);
+      }}
+    >
+      {/* 1. CUSTOM TOP HEADER */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.headerIconBtn}>
+            <Ionicons name="notifications-outline" size={24} color="#024C59" />
           </TouchableOpacity>
         </View>
-      ))}
+
+        <View style={styles.profileSection}>
+          <View style={styles.profileTextContainer}>
+            <Text style={styles.greetText}>مرحباً،</Text>
+            <Text style={styles.userName}>{authUser?.name || 'مستخدم'}</Text>
+          </View>
+          <Ionicons name="person-circle" size={44} color="#024C59" />
+        </View>
+      </View>
+
+      {/* 2. SUBHEADER & ACTIONS */}
+      <View style={styles.subHeader}>
+        <Text style={styles.pageTitle}>أنواع المصاريف</Text>
+        {isStaff && (
+          <TouchableOpacity style={styles.addBtn} onPress={openCreate}>
+            <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            <Text style={styles.addBtnText}>إضافة نوع جديد</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* 3. HORIZONTAL DATA TABLE */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.tableScroll}>
+        <View style={styles.tableContainer}>
+          {/* Table Headers */}
+          <View style={styles.tableHeader}>
+            <Text style={[styles.thCol, { width: 180, textAlign: 'right' }]}>الاسم</Text>
+            <Text style={[styles.thCol, { width: 85, textAlign: 'center' }]}>الحالة</Text>
+            {isStaff && <Text style={[styles.thCol, { width: 90, textAlign: 'center' }]}>إجراءات</Text>}
+          </View>
+
+          {/* Table Rows */}
+          {types.length === 0 ? (
+            <View style={styles.emptyView}>
+              <Text style={styles.emptyText}>لا توجد أنواع مصاريف مسجلة</Text>
+            </View>
+          ) : (
+            types.map((item, idx) => {
+              const isActive = item.activeFlag === 'Y';
+              return (
+                <View key={item.id} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
+                  {/* Name */}
+                  <Text style={[styles.tdCol, { width: 180, textAlign: 'right', fontWeight: '700' }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  {/* Status */}
+                  <View style={[{ width: 85, alignItems: 'center' }]}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? '#10B981' : '#EF4444' }}>
+                      {isActive ? 'نشط' : 'غير نشط'}
+                    </Text>
+                  </View>
+                  {/* Actions (Staff only) */}
+                  {isStaff && (
+                    <View style={[{ width: 90, flexDirection: 'row-reverse', justifyContent: 'center', gap: 12 }]}>
+                      {/* Toggle */}
+                      <TouchableOpacity onPress={() => setToggleTarget(item)}>
+                        <Ionicons name="power-outline" size={16} color={isActive ? '#024C59' : '#EF4444'} />
+                      </TouchableOpacity>
+                      {/* Delete */}
+                      <TouchableOpacity onPress={() => setDeleteTarget(item)}>
+                        <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                      </TouchableOpacity>
+                      {/* Edit */}
+                      <TouchableOpacity onPress={() => openEdit(item)}>
+                        <Ionicons name="pencil-outline" size={16} color="#024C59" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              );
+            })
+          )}
+        </View>
+      </ScrollView>
+
+      {/* 4. FORM SHEET MODAL */}
+      <Modal
+        visible={showFormModal}
+        animationType="slide"
+        onRequestClose={() => setShowFormModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+        >
+          <View style={styles.formHeader}>
+            <TouchableOpacity onPress={() => setShowFormModal(false)}>
+              <Ionicons name="chevron-forward-outline" size={24} color="#024C59" />
+            </TouchableOpacity>
+            <Text style={styles.formHeaderTitle}>
+              {editingId ? `تعديل النوع "${typeName}"` : 'إضافة نوع جديد'}
+            </Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <View style={styles.formContent}>
+            <Text style={styles.fieldLabel}>اسم النوع</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={typeName}
+              onChangeText={setTypeName}
+              placeholder="ادخل اسم النوع"
+              placeholderTextColor="#94A3B8"
+            />
+
+            <View style={styles.formActionsRow}>
+              <TouchableOpacity style={styles.submitBtn} onPress={save} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.submitBtnText}>
+                    {editingId ? 'حفظ التعديلات' : 'انشاء النوع'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowFormModal(false)}>
+                <Text style={styles.cancelBtnText}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* 5. DELETE CONFIRM MODAL */}
+      <Modal
+        visible={!!deleteTarget}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDeleteTarget(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmCard}>
+            <Ionicons name="trash-outline" size={32} color="#EF4444" style={{ marginBottom: 12 }} />
+            <Text style={styles.confirmTitle}>حذف النوع</Text>
+            <Text style={styles.confirmSubtext}>هل أنت متأكد من حذف هذا النوع؟</Text>
+            <Text style={styles.confirmTargetVal}>
+              "{deleteTarget?.name || 'نوع المصروف'}"
+            </Text>
+            
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmBtn, styles.confirmBtnYes, { backgroundColor: '#EF4444' }]}
+                onPress={triggerDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.confirmBtnText}>حذف</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmBtn, styles.confirmBtnNo]}
+                onPress={() => setDeleteTarget(null)}
+              >
+                <Text style={styles.confirmBtnTextNo}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 6. TOGGLE ACTIVE CONFIRM MODAL */}
+      <Modal
+        visible={!!toggleTarget}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setToggleTarget(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmCard}>
+            <Ionicons name="power-outline" size={32} color="#024C59" style={{ marginBottom: 12 }} />
+            <Text style={styles.confirmTitle}>
+              {toggleTarget?.activeFlag === 'Y' ? 'إيقاف النوع' : 'تفعيل النوع'}
+            </Text>
+            <Text style={styles.confirmSubtext}>
+              هل أنت متأكد من {toggleTarget?.activeFlag === 'Y' ? 'إيقاف' : 'تفعيل'} هذا النوع؟
+            </Text>
+            <Text style={styles.confirmTargetVal}>
+              "{toggleTarget?.name || 'نوع المصروف'}"
+            </Text>
+            
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmBtn, styles.confirmBtnYes]}
+                onPress={triggerToggle}
+                disabled={toggling}
+              >
+                {toggling ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.confirmBtnText}>
+                    {toggleTarget?.activeFlag === 'Y' ? 'إيقاف' : 'تفعيل'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmBtn, styles.confirmBtnNo]}
+                onPress={() => setToggleTarget(null)}
+              >
+                <Text style={styles.confirmBtnTextNo}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 16,
+  },
+  profileSection: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+  },
+  profileTextContainer: {
+    marginRight: 10,
+    alignItems: 'flex-end',
+  },
+  greetText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  userName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F7FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  subHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  pageTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+    textAlign: 'right',
+  },
+  addBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: '#024C59',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  addBtnText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  tableScroll: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    overflow: 'hidden',
+  },
+  tableContainer: {
+    flexDirection: 'column',
+  },
+  tableHeader: {
+    flexDirection: 'row-reverse',
+    backgroundColor: '#EBF5FF',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  thCol: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#024C59',
+  },
+  tableRow: {
+    flexDirection: 'row-reverse',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  tableRowAlt: {
+    backgroundColor: '#FAFBFD',
+  },
+  tdCol: {
+    fontSize: 12,
+    color: '#334155',
+  },
+  emptyView: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+
+  // SHEET MODAL STYLES
+  formHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+  },
+  formHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  formContent: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    textAlign: 'right',
+    marginBottom: 6,
+  },
+  fieldInput: {
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FAFBFD',
+    paddingHorizontal: 12,
+    fontSize: 13,
+    color: '#1E293B',
+    textAlign: 'right',
+  },
+  formActionsRow: {
+    flexDirection: 'column',
+    gap: 10,
+    marginTop: 24,
+  },
+  submitBtn: {
+    height: 46,
+    backgroundColor: '#024C59',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  submitBtnText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  cancelBtn: {
+    height: 46,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '700',
+  },
+
+  // DIALOG PICKERS
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmCard: {
+    width: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  confirmTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 8,
+  },
+  confirmSubtext: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  confirmTargetVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#024C59',
+    marginTop: 10,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmBtnYes: {
+    backgroundColor: '#024C59',
+  },
+  confirmBtnNo: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  confirmBtnText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  confirmBtnTextNo: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '700',
+  },
+});

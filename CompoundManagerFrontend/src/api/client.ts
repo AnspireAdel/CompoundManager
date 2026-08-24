@@ -1,9 +1,8 @@
 import type { User, Resident, Bill, Transaction, Service, Notification, DashboardStats, PaymentProof, ServiceType, UnitType, ExpenseType, Expense, ContactRequest, Dependent, ChatGroupSummary, ChatGroupDetail, ChatMessage, ChatMember, ChatJoinRequest } from '../types';
+import { API_BASE } from '../constants/api';
 
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api';
-
-/** Origin that serves `/uploads/...` (API host in production, same origin when proxied locally). */
-export const UPLOADS_BASE = API_BASE === '/api' ? '' : API_BASE.replace(/\/api\/?$/, '');
+/** Origin that serves `/uploads/...` (API host). */
+export const UPLOADS_BASE = API_BASE.replace(/\/api\/?$/, '');
 
 function getToken(): string | null {
   return localStorage.getItem('token');

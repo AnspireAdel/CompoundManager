@@ -174,6 +174,74 @@ function TrendLineChart({ data }: { data: Array<{ label: string; issued: number;
   );
 }
 
+type TableCell = { text: string; color?: string; bold?: boolean };
+
+function ScrollTable({
+  headers,
+  rows,
+  footer,
+  widths,
+}: {
+  headers: string[];
+  rows: TableCell[][];
+  footer?: TableCell[];
+  widths: number[];
+}) {
+  const minWidth = widths.reduce((sum, w) => sum + w, 0);
+
+  function renderRow(
+    cells: TableCell[],
+    opts: { header?: boolean; footer?: boolean; alt?: boolean },
+  ) {
+    return (
+      <View
+        style={[
+          styles.tableRow,
+          opts.header && styles.tableHeader,
+          opts.footer && styles.tableFooter,
+          !opts.header && !opts.footer && opts.alt && styles.tableRowAlt,
+          { minWidth },
+        ]}
+      >
+        {cells.map((cell, i) => (
+          <Text
+            key={`${cell.text}-${i}`}
+            numberOfLines={2}
+            style={[
+              opts.header ? styles.tableCol : styles.tableColData,
+              opts.footer && styles.tableFooterText,
+              {
+                width: widths[i],
+                flexGrow: 0,
+                flexShrink: 0,
+                textAlign: i === 0 ? 'right' : 'center',
+              },
+              cell.bold && { fontWeight: '700' },
+              cell.color ? { color: cell.color } : null,
+            ]}
+          >
+            {cell.text}
+          </Text>
+        ))}
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator>
+      <View>
+        {renderRow(headers.map((title) => ({ text: title, bold: true })), { header: true })}
+        {rows.map((row, idx) => renderRow(row, { alt: idx % 2 === 0 }))}
+        {footer ? renderRow(footer, { footer: true }) : null}
+      </View>
+    </ScrollView>
+  );
+}
+
+function money(n: number | undefined) {
+  return (n ?? 0).toLocaleString();
+}
+
 export default function HomeScreen() {
   const { user, logout, refreshUser, isStaff, isOwner, isDependent, isAdmin } = useAuth();
   const router = useRouter();
@@ -467,41 +535,136 @@ export default function HomeScreen() {
 
           <View style={styles.card}>
             <Text style={[styles.cardTitle, { marginBottom: 12 }]}>الصيانة حسب نوع الوحدة</Text>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableCol, { flex: 2, textAlign: 'right' }]}>نوع الوحدة</Text>
-              <Text style={[styles.tableCol, { textAlign: 'center' }]}>العدد</Text>
-              <Text style={[styles.tableCol, { textAlign: 'left' }]}>المجموع الشهري</Text>
-            </View>
-            {(stats.unitTypeBreakdown || []).map((row, idx) => (
-              <View key={row.name} style={[styles.tableRow, idx % 2 === 0 && styles.tableRowAlt]}>
-                <Text style={[styles.tableColData, { flex: 2, textAlign: 'right', fontWeight: '600' }]}>{row.name}</Text>
-                <Text style={[styles.tableColData, { textAlign: 'center' }]}>{row.count}</Text>
-                <Text style={[styles.tableColData, { textAlign: 'left', color: '#024C59', fontWeight: '700' }]}>
-                  {row.totalValue.toLocaleString()} ج.م
-                </Text>
-              </View>
-            ))}
+            <ScrollTable
+              headers={['نوع الوحدة', 'عدد الوحدات', 'قيمة الصيانة']}
+              widths={[110, 90, 120]}
+              rows={(stats.unitTypeBreakdown || []).map((row) => [
+                { text: row.name, bold: true },
+                { text: String(row.count) },
+                { text: `${money(row.totalValue)} ج.م`, color: '#024C59', bold: true },
+              ])}
+              footer={[
+                { text: 'الإجمالي', bold: true },
+                { text: String(stats.totals?.count ?? 0), bold: true },
+                { text: `${money(stats.totals?.value)} ج.م`, bold: true },
+              ]}
+            />
           </View>
 
           <View style={styles.card}>
             <Text style={[styles.cardTitle, { marginBottom: 12 }]}>الملخص الشهري</Text>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableCol, { flex: 1.5, textAlign: 'right' }]}>الشهر</Text>
-              <Text style={[styles.tableCol, { textAlign: 'center' }]}>المحصّل</Text>
-              <Text style={[styles.tableCol, { textAlign: 'center' }]}>المصاريف</Text>
-              <Text style={[styles.tableCol, { textAlign: 'left' }]}>الصافي</Text>
-            </View>
-            {(stats.yearlyMonthly || []).map((row, idx) => (
-              <View key={row.monthKey} style={[styles.tableRow, idx % 2 === 0 && styles.tableRowAlt]}>
-                <Text style={[styles.tableColData, { flex: 1.5, textAlign: 'right', fontWeight: '600' }]}>{row.label}</Text>
-                <Text style={[styles.tableColData, { textAlign: 'center', color: '#024C59' }]}>{row.collected.toLocaleString()}</Text>
-                <Text style={[styles.tableColData, { textAlign: 'center', color: '#EF4444' }]}>{(row.expenses || 0).toLocaleString()}</Text>
-                <Text style={[styles.tableColData, { textAlign: 'left', fontWeight: '700', color: row.net >= 0 ? '#10B981' : '#EF4444' }]}>
-                  {row.net.toLocaleString()} ج.م
-                </Text>
-              </View>
-            ))}
+            <ScrollTable
+              headers={[
+                'الشهر',
+                'عدد المُصدر',
+                'عدد المحصّل',
+                'المُصدره',
+                'المحصّله',
+                'المتبقيه',
+                'المصاريف',
+                'الصافي',
+              ]}
+              widths={[90, 88, 88, 96, 96, 96, 96, 96]}
+              rows={(stats.yearlyMonthly || []).map((row) => [
+                { text: row.label, bold: true },
+                { text: String(row.issuedCount ?? 0) },
+                { text: String(row.collectedCount ?? 0) },
+                { text: money(row.issued) },
+                { text: money(row.collected) },
+                { text: money(row.remaining) },
+                { text: money(row.expenses) },
+                {
+                  text: money(row.net),
+                  bold: true,
+                  color: (row.net ?? 0) < 0 ? '#EF4444' : '#10B981',
+                },
+              ])}
+              footer={
+                stats.yearlyTotals
+                  ? [
+                      { text: 'الإجمالي', bold: true },
+                      { text: String(stats.yearlyTotals.issuedCount ?? 0), bold: true },
+                      { text: String(stats.yearlyTotals.collectedCount ?? 0), bold: true },
+                      { text: money(stats.yearlyTotals.issued), bold: true },
+                      { text: money(stats.yearlyTotals.collected), bold: true },
+                      { text: money(stats.yearlyTotals.remaining), bold: true },
+                      { text: money(stats.yearlyTotals.expenses), bold: true },
+                      {
+                        text: money(stats.yearlyTotals.net),
+                        bold: true,
+                        color: (stats.yearlyTotals.net ?? 0) < 0 ? '#EF4444' : '#10B981',
+                      },
+                    ]
+                  : undefined
+              }
+            />
           </View>
+
+          <View style={styles.card}>
+            <Text style={[styles.cardTitle, { marginBottom: 12 }]}>المصروف الشهري</Text>
+            {(stats.yearlyExpenseBreakdown?.expenseTypes || []).length === 0 ? (
+              <Text style={styles.emptyText}>لا توجد أنواع مصاريف بعد</Text>
+            ) : (
+              <ScrollTable
+                headers={[
+                  'الشهر',
+                  'إجمالي المصروف',
+                  ...(stats.yearlyExpenseBreakdown?.expenseTypes || []).map((t) => t.name),
+                ]}
+                widths={[
+                  90,
+                  110,
+                  ...(stats.yearlyExpenseBreakdown?.expenseTypes || []).map(() => 96),
+                ]}
+                rows={(stats.yearlyExpenseBreakdown?.rows || []).map((row) => [
+                  { text: row.label, bold: true },
+                  { text: money(row.total) },
+                  ...(stats.yearlyExpenseBreakdown?.expenseTypes || []).map((t) => ({
+                    text: money(row.byType[String(t.id)]),
+                  })),
+                ])}
+                footer={
+                  stats.yearlyExpenseBreakdown?.totals
+                    ? [
+                        { text: 'الإجمالي', bold: true },
+                        { text: money(stats.yearlyExpenseBreakdown.totals.total), bold: true },
+                        ...(stats.yearlyExpenseBreakdown.expenseTypes || []).map((t) => ({
+                          text: money(stats.yearlyExpenseBreakdown!.totals.byType[String(t.id)]),
+                          bold: true,
+                        })),
+                      ]
+                    : undefined
+                }
+              />
+            )}
+          </View>
+
+          {stats.overdueBills?.length > 0 && (
+            <View style={styles.card}>
+              <Text style={[styles.cardTitle, styles.overdueTitle]}>فواتير متأخرة</Text>
+              <ScrollTable
+                headers={['الساكن', 'الوحدة', 'الموبايل', 'الفترة', 'المبلغ', 'الاستحقاق']}
+                widths={[130, 140, 110, 110, 90, 110]}
+                rows={stats.overdueBills.map((b) => [
+                  {
+                    text: `${b.resident?.residentName || '—'}${
+                      b.resident?.residentType === 'T' ? '\nمستأجر' : b.resident ? '\nمالك' : ''
+                    }`,
+                    bold: true,
+                  },
+                  {
+                    text: b.resident
+                      ? `${b.resident.area || ''}–${b.resident.buildingNo} / ${b.resident.floorNo ?? '—'} / ${b.resident.apartmentNo}`
+                      : '—',
+                  },
+                  { text: b.resident?.mobile || '—' },
+                  { text: b.billType === 'EXTRA' ? (b.title || b.period) : b.period },
+                  { text: `${b.amount} ج.م`, bold: true, color: '#024C59' },
+                  { text: new Date(b.dueDate).toLocaleDateString('ar-EG') },
+                ])}
+              />
+            </View>
+          )}
         </>
       ) : (
         <>
@@ -560,8 +723,11 @@ export default function HomeScreen() {
                     </View>
                   </View>
                   <View style={styles.billCardRight}>
+                    <Text style={styles.billTypeLabel}>
+                      {b.billType === 'EXTRA' ? 'إضافية' : 'شهرية'}
+                    </Text>
                     <Text style={styles.billTitle}>
-                      {b.billType === 'EXTRA' ? (b.title || 'فاتورة إضافية') : `فاتورة صيانة - ${b.period}`}
+                      {b.billType === 'EXTRA' ? (b.title || 'فاتورة إضافية') : b.period}
                     </Text>
                     <Text style={styles.billDate}>تاريخ الاستحقاق: {new Date(b.dueDate).toLocaleDateString('ar-EG')}</Text>
                   </View>
@@ -987,6 +1153,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#334155',
   },
+  tableFooter: {
+    borderBottomWidth: 0,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 12,
+  },
+  tableFooterText: {
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  overdueTitle: {
+    marginBottom: 12,
+    color: '#EF4444',
+  },
   quickGrid: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
@@ -1036,6 +1217,12 @@ const styles = StyleSheet.create({
   billCardRight: {
     alignItems: 'flex-end',
     flex: 1,
+  },
+  billTypeLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#024C59',
+    marginBottom: 2,
   },
   billTitle: {
     fontSize: 14,

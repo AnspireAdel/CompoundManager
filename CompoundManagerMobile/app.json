@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/images/splash-screen.png",
       "resizeMode": "cover",
-      "backgroundColor": "#F5FAF6"
+      "backgroundColor": "#DCEBF8"
     },
     "ios": {
       "bundleIdentifier": "com.anspire.compoundmanager",
@@ -39,17 +39,17 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/app icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F5FAF6",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 180,
-          "resizeMode": "contain"
+          "backgroundColor": "#DCEBF8",
+          "image": "./assets/images/splash-screen.png",
+          "imageWidth": 300,
+          "resizeMode": "cover"
         }
       ],
       "expo-secure-store",

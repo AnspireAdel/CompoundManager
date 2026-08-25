@@ -1,7 +1,12 @@
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
-import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import { View } from 'react-native';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AnimatedSplashScreen } from '@/components/animated-splash-screen';
+
+// Keep native splash visible until our animated splash component takes over
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const PUBLIC_ROUTES = new Set(['login', 'register', 'forgot-password', 'reset-password']);
 
@@ -10,9 +15,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
   const navState = useRootNavigationState();
+  const [splashVisible, setSplashVisible] = useState(true);
+
+  const isReady = !loading && Boolean(navState?.key);
 
   useEffect(() => {
-    if (loading || !navState?.key) return;
+    if (!isReady) return;
 
     const first = segments[0] as string | undefined;
     const inPublic = first ? PUBLIC_ROUTES.has(first) : false;
@@ -32,17 +40,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (user && !needsPasswordChange && (inPublic || onForceChange)) {
       router.replace('/(tabs)');
     }
-  }, [user, loading, segments, navState?.key]);
+  }, [user, isReady, segments]);
 
-  if (loading || !navState?.key) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
-    );
-  }
-
-  return <>{children}</>;
+  return (
+    <View style={{ flex: 1 }}>
+      {children}
+      {splashVisible && (
+        <AnimatedSplashScreen
+          isReady={isReady}
+          onFinish={() => setSplashVisible(false)}
+        />
+      )}
+    </View>
+  );
 }
 
 export default function RootLayout() {

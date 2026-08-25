@@ -187,54 +187,70 @@ function ScrollTable({
   footer?: TableCell[];
   widths: number[];
 }) {
-  const minWidth = widths.reduce((sum, w) => sum + w, 0);
+  const totalWidth = widths.reduce((sum, w) => sum + w, 0);
 
   function renderRow(
     cells: TableCell[],
-    opts: { header?: boolean; footer?: boolean; alt?: boolean },
+    opts: { header?: boolean; footer?: boolean; alt?: boolean; rowKey?: string | number },
   ) {
     return (
       <View
+        key={opts.rowKey}
         style={[
           styles.tableRow,
-          opts.header && styles.tableHeader,
-          opts.footer && styles.tableFooter,
+          opts.header && styles.tableHeaderRow,
+          opts.footer && styles.tableFooterRow,
           !opts.header && !opts.footer && opts.alt && styles.tableRowAlt,
-          { minWidth },
+          { minWidth: totalWidth },
         ]}
       >
-        {cells.map((cell, i) => (
-          <Text
-            key={`${cell.text}-${i}`}
-            numberOfLines={2}
-            style={[
-              opts.header ? styles.tableCol : styles.tableColData,
-              opts.footer && styles.tableFooterText,
-              {
-                width: widths[i],
-                flexGrow: 0,
-                flexShrink: 0,
-                textAlign: i === 0 ? 'right' : 'center',
-              },
-              cell.bold && { fontWeight: '700' },
-              cell.color ? { color: cell.color } : null,
-            ]}
-          >
-            {cell.text}
-          </Text>
-        ))}
+        {(cells || []).map((cell, i) => {
+          const colWidth = widths[i] || 110;
+          return (
+            <View
+              key={`${cell?.text ?? ''}-${i}`}
+              style={[
+                styles.tableCell,
+                { width: colWidth },
+                opts.header && styles.tableHeaderCell,
+                opts.footer && styles.tableFooterCell,
+              ]}
+            >
+              <Text
+                numberOfLines={3}
+                style={[
+                  styles.tableCellText,
+                  opts.header && styles.tableHeaderText,
+                  opts.footer && styles.tableFooterText,
+                  cell?.bold && { fontWeight: '700' },
+                  cell?.color ? { color: cell.color } : null,
+                  { textAlign: i === 0 ? 'right' : 'center' },
+                ]}
+              >
+                {cell?.text ?? ''}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     );
   }
 
   return (
-    <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator>
-      <View>
-        {renderRow(headers.map((title) => ({ text: title, bold: true })), { header: true })}
-        {rows.map((row, idx) => renderRow(row, { alt: idx % 2 === 0 }))}
-        {footer ? renderRow(footer, { footer: true }) : null}
-      </View>
-    </ScrollView>
+    <View style={styles.tableOuterWrap}>
+      <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator>
+        <View style={styles.tableInnerWrap}>
+          {renderRow(
+            (headers || []).map((title) => ({ text: title, bold: true })),
+            { header: true, rowKey: 'tbl-header' }
+          )}
+          {(rows || []).map((row, idx) =>
+            renderRow(row, { alt: idx % 2 === 0, rowKey: `tbl-row-${idx}` })
+          )}
+          {footer ? renderRow(footer, { footer: true, rowKey: 'tbl-footer' }) : null}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -537,7 +553,7 @@ export default function HomeScreen() {
             <Text style={[styles.cardTitle, { marginBottom: 12 }]}>الصيانة حسب نوع الوحدة</Text>
             <ScrollTable
               headers={['نوع الوحدة', 'عدد الوحدات', 'قيمة الصيانة']}
-              widths={[110, 90, 120]}
+              widths={[130, 110, 140]}
               rows={(stats.unitTypeBreakdown || []).map((row) => [
                 { text: row.name, bold: true },
                 { text: String(row.count) },
@@ -564,7 +580,7 @@ export default function HomeScreen() {
                 'المصاريف',
                 'الصافي',
               ]}
-              widths={[90, 88, 88, 96, 96, 96, 96, 96]}
+              widths={[110, 105, 105, 115, 115, 115, 115, 115]}
               rows={(stats.yearlyMonthly || []).map((row) => [
                 { text: row.label, bold: true },
                 { text: String(row.issuedCount ?? 0) },
@@ -612,9 +628,9 @@ export default function HomeScreen() {
                   ...(stats.yearlyExpenseBreakdown?.expenseTypes || []).map((t) => t.name),
                 ]}
                 widths={[
-                  90,
                   110,
-                  ...(stats.yearlyExpenseBreakdown?.expenseTypes || []).map(() => 96),
+                  130,
+                  ...(stats.yearlyExpenseBreakdown?.expenseTypes || []).map(() => 120),
                 ]}
                 rows={(stats.yearlyExpenseBreakdown?.rows || []).map((row) => [
                   { text: row.label, bold: true },
@@ -644,7 +660,7 @@ export default function HomeScreen() {
               <Text style={[styles.cardTitle, styles.overdueTitle]}>فواتير متأخرة</Text>
               <ScrollTable
                 headers={['الساكن', 'الوحدة', 'الموبايل', 'الفترة', 'المبلغ', 'الاستحقاق']}
-                widths={[130, 140, 110, 110, 90, 110]}
+                widths={[150, 170, 125, 125, 110, 120]}
                 rows={stats.overdueBills.map((b) => [
                   {
                     text: `${b.resident?.residentName || '—'}${
@@ -1125,42 +1141,65 @@ const styles = StyleSheet.create({
   yearChipTextActive: {
     color: '#FFFFFF',
   },
-  tableHeader: {
-    flexDirection: 'row-reverse',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingBottom: 8,
-    marginBottom: 4,
+  tableOuterWrap: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    marginTop: 4,
   },
-  tableCol: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
+  tableInnerWrap: {
+    flexDirection: 'column',
   },
   tableRow: {
     flexDirection: 'row-reverse',
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
+    borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
-    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'stretch',
+  },
+  tableHeaderRow: {
+    backgroundColor: '#F1F5F9',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#CBD5E1',
+  },
+  tableFooterRow: {
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1.5,
+    borderTopColor: '#CBD5E1',
+    borderBottomWidth: 0,
   },
   tableRowAlt: {
     backgroundColor: '#FAFBFD',
   },
-  tableColData: {
-    flex: 1,
+  tableCell: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    borderLeftWidth: 0.5,
+    borderLeftColor: '#F1F5F9',
+  },
+  tableHeaderCell: {
+    paddingVertical: 12,
+    borderLeftColor: '#E2E8F0',
+  },
+  tableFooterCell: {
+    paddingVertical: 12,
+    borderLeftColor: '#E2E8F0',
+  },
+  tableCellText: {
     fontSize: 12,
     color: '#334155',
+    lineHeight: 18,
   },
-  tableFooter: {
-    borderBottomWidth: 0,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-    paddingVertical: 12,
+  tableHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
   },
   tableFooterText: {
+    fontSize: 12,
     fontWeight: '800',
     color: '#0F172A',
   },

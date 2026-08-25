@@ -45,6 +45,7 @@ export interface UnitType {
   monthlyFees: number;
   hasFloor: boolean;
   hasApartment: boolean;
+  showOnRegister?: boolean;
   activeFlag: string;
   createdAt?: string;
 }

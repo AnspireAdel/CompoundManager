@@ -27,7 +27,7 @@ async function main() {
         hasApartment: ut.hasApartment,
         activeFlag: 'Y',
       },
-      create: { ...ut, activeFlag: 'Y' },
+      create: { ...ut, showOnRegister: true, activeFlag: 'Y' },
     });
   }
 

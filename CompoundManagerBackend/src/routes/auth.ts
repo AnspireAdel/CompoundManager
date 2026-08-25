@@ -92,7 +92,7 @@ router.post('/register', async (req, res) => {
   if (existingUser) return res.status(409).json({ error: 'البريد الإلكتروني مستخدم بالفعل' });
 
   const unitType = await prisma.unitType.findFirst({
-    where: { id: data.unitTypeId, activeFlag: 'Y' },
+    where: { id: data.unitTypeId, activeFlag: 'Y', showOnRegister: true },
   });
   if (!unitType) {
     return res.status(400).json({ error: 'نوع الوحدة غير صالح' });

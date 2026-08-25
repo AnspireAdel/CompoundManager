@@ -23,11 +23,13 @@ export default function UnitTypesPage() {
   const [monthlyFees, setMonthlyFees] = useState(500);
   const [hasFloor, setHasFloor] = useState(true);
   const [hasApartment, setHasApartment] = useState(true);
+  const [showOnRegister, setShowOnRegister] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [editFees, setEditFees] = useState(0);
   const [editHasFloor, setEditHasFloor] = useState(true);
   const [editHasApartment, setEditHasApartment] = useState(true);
+  const [editShowOnRegister, setEditShowOnRegister] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -49,11 +51,13 @@ export default function UnitTypesPage() {
         monthlyFees: Number(monthlyFees),
         hasFloor,
         hasApartment,
+        showOnRegister,
       });
       setName('');
       setMonthlyFees(500);
       setHasFloor(true);
       setHasApartment(true);
+      setShowOnRegister(true);
       setMessage('تم إضافة نوع الوحدة');
       load();
     } catch (err) {
@@ -69,6 +73,7 @@ export default function UnitTypesPage() {
         monthlyFees: Number(editFees),
         hasFloor: editHasFloor,
         hasApartment: editHasApartment,
+        showOnRegister: editShowOnRegister,
       });
       setEditingId(null);
       setMessage('تم التعديل');
@@ -147,6 +152,15 @@ export default function UnitTypesPage() {
                 />
                 يحتوي على شقة
               </Label>
+              <Label className="mb-4 flex cursor-pointer items-center gap-2 font-normal">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-input"
+                  checked={showOnRegister}
+                  onChange={(e) => setShowOnRegister(e.target.checked)}
+                />
+                يظهر في التسجيل الجديد
+              </Label>
             </FormRow>
             <Button type="submit">إضافة</Button>
           </form>
@@ -162,6 +176,7 @@ export default function UnitTypesPage() {
                 <TableHead>الرسوم الشهرية</TableHead>
                 <TableHead>دور</TableHead>
                 <TableHead>شقة</TableHead>
+                <TableHead>التسجيل الجديد</TableHead>
                 <TableHead>الحالة</TableHead>
                 <TableHead />
               </TableRow>
@@ -217,6 +232,18 @@ export default function UnitTypesPage() {
                     )}
                   </TableCell>
                   <TableCell>
+                    {editingId === t.id ? (
+                      <input
+                        type="checkbox"
+                        className="size-4 rounded border-input"
+                        checked={editShowOnRegister}
+                        onChange={(e) => setEditShowOnRegister(e.target.checked)}
+                      />
+                    ) : (
+                      t.showOnRegister !== false ? 'نعم' : 'لا'
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <span
                       className={cn(
                         'inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold',
@@ -250,6 +277,7 @@ export default function UnitTypesPage() {
                               setEditFees(t.monthlyFees);
                               setEditHasFloor(t.hasFloor);
                               setEditHasApartment(t.hasApartment);
+                              setEditShowOnRegister(t.showOnRegister !== false);
                             }}
                           >
                             تعديل

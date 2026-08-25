@@ -23,6 +23,7 @@ export default function UnitTypesScreen() {
   const [monthlyFees, setMonthlyFees] = useState('500');
   const [hasFloor, setHasFloor] = useState(true);
   const [hasApartment, setHasApartment] = useState(true);
+  const [showOnRegister, setShowOnRegister] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Delete Confirm State
@@ -49,6 +50,7 @@ export default function UnitTypesScreen() {
     setMonthlyFees('500');
     setHasFloor(true);
     setHasApartment(true);
+    setShowOnRegister(true);
     setShowFormModal(true);
   }
 
@@ -58,6 +60,7 @@ export default function UnitTypesScreen() {
     setMonthlyFees(String(t.monthlyFees));
     setHasFloor(t.hasFloor);
     setHasApartment(t.hasApartment);
+    setShowOnRegister(t.showOnRegister !== false);
     setShowFormModal(true);
   }
 
@@ -77,6 +80,7 @@ export default function UnitTypesScreen() {
         monthlyFees: Number(monthlyFees),
         hasFloor,
         hasApartment,
+        showOnRegister,
       };
 
       if (editingId) {
@@ -176,6 +180,7 @@ export default function UnitTypesScreen() {
             <Text style={[styles.thCol, { width: 140, textAlign: 'right' }]}>الاسم</Text>
             <Text style={[styles.thCol, { width: 110, textAlign: 'center' }]}>الرسوم الشهرية</Text>
             <Text style={[styles.thCol, { width: 110, textAlign: 'center' }]}>الخصائص</Text>
+            <Text style={[styles.thCol, { width: 110, textAlign: 'center' }]}>التسجيل الجديد</Text>
             <Text style={[styles.thCol, { width: 85, textAlign: 'center' }]}>الحالة</Text>
             {isStaff && <Text style={[styles.thCol, { width: 90, textAlign: 'center' }]}>إجراءات</Text>}
           </View>
@@ -202,6 +207,9 @@ export default function UnitTypesScreen() {
                   {/* Properties */}
                   <Text style={[styles.tdCol, { width: 110, textAlign: 'center', color: '#64748B' }]}>
                     {props}
+                  </Text>
+                  <Text style={[styles.tdCol, { width: 110, textAlign: 'center', color: '#64748B' }]}>
+                    {item.showOnRegister !== false ? 'نعم' : 'لا'}
                   </Text>
                   {/* Status */}
                   <View style={[{ width: 85, alignItems: 'center' }]}>
@@ -304,6 +312,20 @@ export default function UnitTypesScreen() {
                   style={{ marginLeft: 8 }}
                 />
                 <Text style={styles.checkboxLabel}>له شقة / وحدة</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.checkboxRow, { marginTop: 12 }]}
+                onPress={() => setShowOnRegister(!showOnRegister)}
+                activeOpacity={0.75}
+              >
+                <Ionicons
+                  name={showOnRegister ? 'checkbox' : 'square-outline'}
+                  size={22}
+                  color="#024C59"
+                  style={{ marginLeft: 8 }}
+                />
+                <Text style={styles.checkboxLabel}>يظهر في التسجيل الجديد</Text>
               </TouchableOpacity>
             </View>
 

@@ -10,6 +10,7 @@ const typeSchema = z.object({
   monthlyFees: z.number().min(0),
   hasFloor: z.boolean().optional(),
   hasApartment: z.boolean().optional(),
+  showOnRegister: z.boolean().optional(),
   activeFlag: z.enum(['Y', 'N']).optional(),
 });
 
@@ -28,7 +29,7 @@ router.get('/', async (req, res) => {
   }
 
   const types = await prisma.unitType.findMany({
-    where: { activeFlag: 'Y' },
+    where: { activeFlag: 'Y', showOnRegister: true },
     orderBy: { name: 'asc' },
   });
   res.json(types);
@@ -49,6 +50,7 @@ router.post('/', authorize(...STAFF_ROLES), async (req, res) => {
       monthlyFees: parsed.data.monthlyFees,
       hasFloor: parsed.data.hasFloor ?? true,
       hasApartment: parsed.data.hasApartment ?? true,
+      showOnRegister: parsed.data.showOnRegister ?? true,
       activeFlag: parsed.data.activeFlag || 'Y',
     },
   });

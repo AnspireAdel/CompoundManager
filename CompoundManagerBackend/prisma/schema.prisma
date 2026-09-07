@@ -132,9 +132,10 @@ model UnitType {
   id           Int      @id @default(autoincrement())
   name         String   @unique
   monthlyFees  Float    @default(0) @map("MONTHLY_FEES")
-  hasFloor     Boolean  @default(true) @map("HAS_FLOOR")
-  hasApartment Boolean  @default(true) @map("HAS_APARTMENT")
-  activeFlag   String   @default("Y") @map("ACTIVE_FLAG")
+  hasFloor       Boolean  @default(true) @map("HAS_FLOOR")
+  hasApartment   Boolean  @default(true) @map("HAS_APARTMENT")
+  showOnRegister Boolean  @default(true) @map("SHOW_ON_REGISTER")
+  activeFlag     String   @default("Y") @map("ACTIVE_FLAG")
   createdAt    DateTime @default(now()) @map("CREATED_AT")
 
   residents Resident[]

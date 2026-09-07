@@ -273,13 +273,13 @@ export const api = {
   getUnitTypes: (manage?: boolean) =>
     request<UnitType[]>(`/unit-types${manage ? '?manage=true' : ''}`),
 
-  createUnitType: (data: { name: string; monthlyFees: number; hasFloor: boolean; hasApartment: boolean }) =>
+  createUnitType: (data: { name: string; monthlyFees: number; hasFloor: boolean; hasApartment: boolean; showOnRegister?: boolean }) =>
     request<UnitType>('/unit-types', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  updateUnitType: (id: number, data: { name?: string; monthlyFees?: number; hasFloor?: boolean; hasApartment?: boolean; activeFlag?: string }) =>
+  updateUnitType: (id: number, data: { name?: string; monthlyFees?: number; hasFloor?: boolean; hasApartment?: boolean; showOnRegister?: boolean; activeFlag?: string }) =>
     request<UnitType>(`/unit-types/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

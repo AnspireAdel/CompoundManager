@@ -76,7 +76,7 @@ async function main() {
         hasFloor: ut.hasFloor,
         hasApartment: ut.hasApartment,
       },
-      create: { ...ut, activeFlag: 'Y' },
+      create: { ...ut, showOnRegister: true, activeFlag: 'Y' },
     });
   }
 

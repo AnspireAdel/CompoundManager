@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Jasmine",
+    "name": "Jcity",
     "slug": "CompoundManagerMobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,11 +14,17 @@
     },
     "ios": {
       "bundleIdentifier": "com.anspire.compoundmanager",
-      "buildNumber": "1",
+      "buildNumber": "4",
       "supportsTablet": true,
       "icon": "./assets/images/icon.png",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "يُستخدم الميكروفون لتسجيل الرسائل الصوتية في المحادثات"
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "يُستخدم الميكروفون لتسجيل الرسائل الصوتية في المحادثات",
+        "UIBackgroundModes": ["audio", "processing"],
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "$(PRODUCT_BUNDLE_IDENTIFIER)",
+          "com.anspire.compoundmanager"
+        ]
       }
     },
     "android": {
@@ -48,7 +54,6 @@
         {
           "backgroundColor": "#DCEBF8",
           "image": "./assets/images/splash-screen.png",
-          "imageWidth": 300,
           "resizeMode": "cover"
         }
       ],

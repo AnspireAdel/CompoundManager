@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Dimensions, StyleSheet, StatusBar, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,15 +6,13 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
-  withSequence,
-  withDelay,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
 import * as SplashScreen from 'expo-splash-screen';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const SPLASH_DURATION_MS = 3000;
 
 interface AnimatedSplashScreenProps {
   isReady: boolean;
@@ -22,53 +20,31 @@ interface AnimatedSplashScreenProps {
 }
 
 export function AnimatedSplashScreen({ isReady, onFinish }: AnimatedSplashScreenProps) {
-  // Shared values for entrance and exit animations
-  const logoOpacity = useSharedValue(0);
-  const logoScale = useSharedValue(0.85);
-  const logoTranslateY = useSharedValue(20);
+  const logoOpacity = useSharedValue(1);
+  const logoScale = useSharedValue(1);
+  const logoTranslateY = useSharedValue(0);
 
-  const bgScale = useSharedValue(1.06);
-  const bgOpacity = useSharedValue(0);
+  const bgScale = useSharedValue(1);
+  const bgOpacity = useSharedValue(1);
 
   const containerOpacity = useSharedValue(1);
   const containerScale = useSharedValue(1);
 
+  const startedAtRef = useRef(Date.now());
+
   useEffect(() => {
-    // Hide the native OS splash screen immediately so our animated screen takes over seamlessly
-    SplashScreen.hideAsync().catch(() => {});
-
-    // 1. Entrance animation: Background fades in with subtle zoom out
-    bgOpacity.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) });
-    bgScale.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.cubic) });
-
-    // 2. Entrance animation: Logo spring entrance with slight delay
-    logoOpacity.value = withDelay(
-      200,
-      withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) })
-    );
-    logoScale.value = withDelay(
-      200,
-      withSpring(1, {
-        damping: 14,
-        stiffness: 90,
-        mass: 0.9,
-      })
-    );
-    logoTranslateY.value = withDelay(
-      200,
-      withSpring(0, {
-        damping: 14,
-        stiffness: 90,
-        mass: 0.9,
-      })
-    );
+    // Native splash already shows the same artwork. Hide it on the first frame
+    // so there is no white placeholder, then keep this screen fully visible.
+    requestAnimationFrame(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    });
   }, []);
 
-  // When app resources & auth are ready, trigger smooth exit animation
+  // Stay on splash for at least 3s, then fade out once the app is ready
   useEffect(() => {
     if (!isReady) return;
 
-    // Smooth exit transition
+    const remaining = Math.max(0, SPLASH_DURATION_MS - (Date.now() - startedAtRef.current));
     const exitTimer = setTimeout(() => {
       containerScale.value = withTiming(1.04, {
         duration: 450,
@@ -87,7 +63,7 @@ export function AnimatedSplashScreen({ isReady, onFinish }: AnimatedSplashScreen
           }
         }
       );
-    }, 150);
+    }, remaining);
 
     return () => clearTimeout(exitTimer);
   }, [isReady]);
@@ -108,13 +84,13 @@ export function AnimatedSplashScreen({ isReady, onFinish }: AnimatedSplashScreen
   }));
 
   return (
-    <Animated.View style={[styles.container, animatedContainerStyle, { pointerEvents: isReady ? 'none' : 'auto' }]}>
+    <Animated.View style={[styles.container, animatedContainerStyle]}>
       <StatusBar barStyle="dark-content" backgroundColor="#D8EAFB" translucent />
 
       {/* Building Background Image */}
       <Animated.View style={[StyleSheet.absoluteFill, animatedBgStyle]}>
         <Image
-          source={require('@/assets/images/splash-screen.jpg')}
+          source={require('@/assets/images/splash-screen.png')}
           style={styles.backgroundImage}
           contentFit="cover"
         />

@@ -28,6 +28,10 @@ app.use(cors({ origin: corsOrigins(), credentials: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+app.get(['/privacy', '/privacy-policy'], (_req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'privacy.html'));
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',

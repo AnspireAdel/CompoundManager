@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { FormField, FormRow, PageHeader } from '@/components/ui-helpers';
+import { DELETE_ACCOUNT_URL } from '@/constants/api';
 import {
   Table,
   TableBody,
@@ -616,6 +617,22 @@ export default function ProfilePage() {
               {changingPassword ? 'جاري التحديث...' : 'تحديث كلمة المرور'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>حذف الحساب</CardTitle>
+          <CardDescription>
+            يمكنك طلب حذف حسابك والبيانات المرتبطة به. ستراجع الإدارة الطلب خلال 30 يوماً.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <a href={DELETE_ACCOUNT_URL} target="_blank" rel="noreferrer">
+              طلب حذف الحساب
+            </a>
+          </Button>
         </CardContent>
       </Card>
     </div>

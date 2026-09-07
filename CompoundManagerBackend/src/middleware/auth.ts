@@ -58,6 +58,21 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+/** Attach req.user when a valid token is present; otherwise continue unauthenticated. */
+export function optionalAuthenticate(req: Request, res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) {
+    return next();
+  }
+  try {
+    const token = header.slice(7);
+    req.user = jwt.verify(token, config.jwtSecret) as AuthUser;
+  } catch {
+    /* ignore invalid token on public forms */
+  }
+  next();
+}
+
 export function authorize(...roles: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {

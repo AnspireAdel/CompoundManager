@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
-  KeyboardAvoidingView, Platform, ScrollView, Image,
+  KeyboardAvoidingView, Platform, ScrollView, Image, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import PasswordInput from '@/components/PasswordInput';
+import { DELETE_ACCOUNT_URL } from '@/constants/api';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -76,6 +77,10 @@ export default function LoginScreen() {
             <Text style={styles.registerText}>
               مستخدم جديد؟ <Text style={styles.registerAction}>سجل الآن</Text>
             </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.registerLink} onPress={() => Linking.openURL(DELETE_ACCOUNT_URL)}>
+            <Text style={styles.deleteAccountText}>طلب حذف الحساب</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -172,6 +177,11 @@ const styles = StyleSheet.create({
   registerAction: {
     color: '#024C59',
     fontWeight: '700',
+  },
+  deleteAccountText: {
+    color: '#64748B',
+    fontSize: 13,
+    textDecorationLine: 'underline',
   },
 });
 

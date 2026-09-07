@@ -21,6 +21,7 @@ import contactRequestRoutes from './routes/contactRequests';
 import dependentRoutes from './routes/dependents';
 import chatRoutes from './routes/chats';
 import mediaRoutes from './routes/media';
+import accountDeletionRoutes from './routes/accountDeletion';
 
 const app = express();
 
@@ -34,6 +35,10 @@ app.get(['/privacy', '/privacy-policy'], (_req, res) => {
 
 app.get(['/support', '/help'], (_req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'support.html'));
+});
+
+app.get(['/delete-account', '/account-deletion'], (_req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'delete-account.html'));
 });
 
 app.get('/api/health', (_req, res) => {
@@ -58,6 +63,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/contact-requests', contactRequestRoutes);
+app.use('/api/account-deletion-requests', accountDeletionRoutes);
 app.use('/api/dependents', dependentRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/media', mediaRoutes);

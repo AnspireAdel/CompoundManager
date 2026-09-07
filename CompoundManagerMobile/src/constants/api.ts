@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 /** true = local backend, false = production Render */
-export const isStaging = true;
+export const isStaging = false;
 
 const PRODUCTION_API = 'https://compoundmanager-2pm1.onrender.com/api';
 
@@ -16,3 +16,7 @@ const STAGING_HOST =
 export const API_BASE = isStaging
   ? `http://${STAGING_HOST}:3001/api`
   : PRODUCTION_API;
+
+export const DELETE_ACCOUNT_URL = isStaging
+  ? `http://${STAGING_HOST}:3001/delete-account`
+  : 'https://compoundmanager-2pm1.onrender.com/delete-account';

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>طلب حذف الحساب — Jcity</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      line-height: 1.75;
+      color: #0f172a;
+      background: #f8fafc;
+    }
+    main { max-width: 640px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { color: #024C59; font-size: 1.7rem; margin-bottom: 0.2rem; }
+    h2 { color: #024C59; font-size: 1.1rem; margin-top: 1.6rem; }
+    .meta { color: #64748b; margin-bottom: 1.5rem; }
+    .card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 28px 24px;
+    }
+    label { display: block; font-weight: 600; margin: 12px 0 6px; }
+    input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+    }
+    button {
+      margin-top: 16px;
+      background: #024C59;
+      color: #fff;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: default; }
+    .ok { color: #047857; font-weight: 600; }
+    .err { color: #b91c1c; font-weight: 600; }
+    a { color: #024C59; }
+    .en { direction: ltr; text-align: left; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>طلب حذف حساب جسيتي</h1>
+    <p class="meta">Anspire · Jcity</p>
+    <p>
+      استخدم هذا النموذج لطلب حذف حسابك والبيانات المرتبطة به (الملف الشخصي، المحادثات، إيصالات الدفع المرفوعة، وبيانات الوحدة المرتبطة بالحساب).
+      قد نحتفظ بسجلات مالية لازمة لإدارة الكمبوند للمدة التي يفرضها النظام المحاسبي.
+    </p>
+    <p>تتم معالجة الطلب خلال <strong>30 يوماً</strong> بعد التحقق من الهوية من إدارة الكمبوند.</p>
+
+    <form id="form">
+      <label for="username">اسم المستخدم</label>
+      <input id="username" name="username" autocomplete="username" />
+      <label for="email">البريد الإلكتروني</label>
+      <input id="email" name="email" type="email" autocomplete="email" />
+      <label for="reason">ملاحظة (اختياري)</label>
+      <textarea id="reason" name="reason" rows="4" maxlength="2000"></textarea>
+      <button type="submit" id="submit">إرسال طلب الحذف</button>
+      <p id="status"></p>
+    </form>
+
+    <p><a href="/privacy">سياسة الخصوصية</a> · <a href="/support">الدعم</a></p>
+
+    <section class="en" lang="en">
+      <h2>Delete your Jcity account</h2>
+      <p>Submit this form to request deletion of your account and associated data. We process requests within 30 days after compound management verifies your identity. Some billing records may be retained if required for compound accounting.</p>
+    </section>
+  </main>
+  <script>
+    const form = document.getElementById('form');
+    const status = document.getElementById('status');
+    const btn = document.getElementById('submit');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      status.className = '';
+      status.textContent = '';
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const reason = document.getElementById('reason').value.trim();
+      if (!username && !email) {
+        status.className = 'err';
+        status.textContent = 'يرجى إدخال اسم المستخدم أو البريد الإلكتروني.';
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/account-deletion-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, reason }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'فشل إرسال الطلب');
+        status.className = 'ok';
+        status.textContent = data.message;
+        form.reset();
+      } catch (err) {
+        status.className = 'err';
+        status.textContent = err.message || 'فشل إرسال الطلب';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

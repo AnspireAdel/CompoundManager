@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
+import { DELETE_ACCOUNT_URL } from '@/constants/api';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -80,6 +81,11 @@ export default function LoginPage() {
               <Link to="/register" className="font-medium text-primary hover:underline">
                 تسجيل جديد
               </Link>
+            </div>
+            <div>
+              <a href={DELETE_ACCOUNT_URL} className="text-primary hover:underline" target="_blank" rel="noreferrer">
+                طلب حذف الحساب
+              </a>
             </div>
           </div>
         </CardContent>

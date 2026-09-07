@@ -6,3 +6,4 @@ export const STAGING_ORIGIN = 'http://localhost:3001';
 
 export const API_ORIGIN = isStaging ? STAGING_ORIGIN : PRODUCTION_ORIGIN;
 export const API_BASE = `${API_ORIGIN}/api`;
+export const DELETE_ACCOUNT_URL = `${API_ORIGIN}/delete-account`;

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import {
   Text, TouchableOpacity, View, StyleSheet, ScrollView, Image,
-  Dimensions, ActivityIndicator, Alert, Modal, Pressable, Platform
+  Dimensions, ActivityIndicator, Alert, Modal, Pressable, Platform, Linking
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { api, Bill, DashboardStats } from '@/api/client';
 import { Screen } from '@/components/screen';
 import { useAuth } from '@/context/AuthContext';
 import { roleLabel } from '@/lib/roles';
+import { DELETE_ACCOUNT_URL } from '@/constants/api';
 
 const statusLabel: Record<string, string> = {
   ISSUED: 'مستحقة',
@@ -301,8 +302,12 @@ export default function HomeScreen() {
   const unpaid = bills.filter((b) => b.status !== 'PAID');
   const years = stats?.availableYears?.length ? stats.availableYears : [year];
 
-  function navigateFromDrawer(path: string) {
+  function navigateFromDrawer(path: string, external?: boolean) {
     setDrawerOpen(false);
+    if (external) {
+      Linking.openURL(path);
+      return;
+    }
     router.push(path as never);
   }
 
@@ -318,6 +323,7 @@ export default function HomeScreen() {
     { label: 'أنواع الوحدات', icon: 'business-outline', route: '/unit-types', show: isStaff },
     { label: 'أنواع الخدمات', icon: 'settings-outline', route: '/service-types', show: isStaff },
     { label: 'أنواع المصاريف', icon: 'document-text-outline', route: '/expense-types', show: isStaff },
+    { label: 'طلب حذف الحساب', icon: 'trash-outline', route: DELETE_ACCOUNT_URL, show: true, external: true },
   ];
 
   return (
@@ -790,7 +796,7 @@ export default function HomeScreen() {
                   <TouchableOpacity
                     key={item.route}
                     style={styles.drawerItem}
-                    onPress={() => navigateFromDrawer(item.route)}
+                    onPress={() => navigateFromDrawer(item.route, 'external' in item && item.external)}
                   >
                     <Ionicons name={item.icon as never} size={22} color="#475569" style={styles.drawerItemIcon} />
                     <Text style={styles.drawerItemLabel}>{item.label}</Text>

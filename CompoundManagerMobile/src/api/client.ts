@@ -1,5 +1,5 @@
 import { API_BASE } from '@/constants/api';
-import { getToken } from '@/lib/storage';
+import { getToken, removeToken } from '@/lib/storage';
 import { File, UploadType } from 'expo-file-system';
 
 export type Role = 'SUPERADMIN' | 'ADMIN' | 'ACCOUNTANT' | 'OWNER' | 'DEPENDENT';
@@ -274,7 +274,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(typeof err.error === 'string' ? err.error : 'Request failed');
+    if (res.status === 401) {
+      await removeToken().catch(() => {});
+    }
+    const message = typeof err.error === 'string' ? err.error : 'Request failed';
+    const error = new Error(message);
+    (error as any).status = res.status;
+    throw error;
   }
 
   if (res.status === 204) return undefined as T;

@@ -62,12 +62,12 @@ export default function TransactionsScreen() {
         <View style={styles.tableContainer}>
           {/* Table Headers */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.thCol, { width: 90, textAlign: 'center' }]}>التاريخ</Text>
-            {isStaff && <Text style={[styles.thCol, { width: 130, textAlign: 'right' }]}>الساكن</Text>}
-            <Text style={[styles.thCol, { width: 70, textAlign: 'center' }]}>النوع</Text>
-            <Text style={[styles.thCol, { width: 80, textAlign: 'center' }]}>مدين/دائن</Text>
-            <Text style={[styles.thCol, { width: 80, textAlign: 'left' }]}>المبلغ</Text>
-            <Text style={[styles.thCol, { width: 180, textAlign: 'right' }]}>ملاحظات</Text>
+            <Text style={[styles.thCol, { width: 100, textAlign: 'center' }]}>التاريخ</Text>
+            {isStaff && <Text style={[styles.thCol, { width: 140, textAlign: 'right' }]}>الساكن</Text>}
+            <Text style={[styles.thCol, { width: 75, textAlign: 'center' }]}>النوع</Text>
+            <Text style={[styles.thCol, { width: 85, textAlign: 'center' }]}>مدين/دائن</Text>
+            <Text style={[styles.thCol, { width: 110, textAlign: 'center' }]}>المبلغ</Text>
+            <Text style={[styles.thCol, { width: 220, textAlign: 'right' }]}>ملاحظات</Text>
           </View>
 
           {/* Table Rows */}
@@ -81,29 +81,29 @@ export default function TransactionsScreen() {
               return (
                 <View key={t.id} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
                   {/* Date */}
-                  <Text style={[styles.tdCol, { width: 90, textAlign: 'center' }]}>
+                  <Text style={[styles.tdCol, { width: 100, textAlign: 'center' }]}>
                     {new Date(t.trxDate).toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/[/]/g, '-')}
                   </Text>
                   {/* Resident Name (Staff only) */}
                   {isStaff && (
-                    <Text style={[styles.tdCol, { width: 130, textAlign: 'right', fontWeight: '700' }]} numberOfLines={1}>
+                    <Text style={[styles.tdCol, { width: 140, textAlign: 'right', fontWeight: '700' }]} numberOfLines={1}>
                       {t.resident?.residentName || '—'}
                     </Text>
                   )}
                   {/* Type */}
-                  <Text style={[styles.tdCol, { width: 70, textAlign: 'center' }]}>
+                  <Text style={[styles.tdCol, { width: 75, textAlign: 'center' }]}>
                     {t.trxType === 'BIL' ? 'فاتورة' : t.trxType === 'PAY' ? 'دفعة' : t.trxType}
                   </Text>
                   {/* Dr/Cr status */}
-                  <Text style={[styles.tdCol, { width: 80, textAlign: 'center', color: isDebit ? '#EF4444' : '#10B981', fontWeight: '800' }]}>
+                  <Text style={[styles.tdCol, { width: 85, textAlign: 'center', color: isDebit ? '#EF4444' : '#10B981', fontWeight: '800' }]}>
                     {isDebit ? 'مدين' : 'دائن'}
                   </Text>
                   {/* Amount */}
-                  <Text style={[styles.tdCol, { width: 80, textAlign: 'left', fontWeight: '700' }]}>
-                    {t.trxAmount} ج.م
+                  <Text style={[styles.tdCol, { width: 110, textAlign: 'center', fontWeight: '700' }]}>
+                    {Number(t.trxAmount || 0).toLocaleString()} ج.م
                   </Text>
                   {/* Notes */}
-                  <Text style={[styles.tdCol, { width: 180, textAlign: 'right', color: '#64748B' }]} numberOfLines={1}>
+                  <Text style={[styles.tdCol, { width: 220, textAlign: 'right', color: '#64748B' }]} numberOfLines={1}>
                     {t.notes || '—'}
                   </Text>
                 </View>
@@ -191,6 +191,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#024C59',
+    paddingHorizontal: 8,
   },
   tableRow: {
     flexDirection: 'row-reverse',
@@ -207,6 +208,7 @@ const styles = StyleSheet.create({
   tdCol: {
     fontSize: 12,
     color: '#334155',
+    paddingHorizontal: 8,
   },
   emptyView: {
     paddingVertical: 40,

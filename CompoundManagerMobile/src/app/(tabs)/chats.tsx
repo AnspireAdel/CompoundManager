@@ -275,6 +275,7 @@ export default function ChatsScreen() {
   const [leavingGroup, setLeavingGroup] = useState(false);
 
   const loadGroups = useCallback(async () => {
+    if (!authUser) return [];
     try {
       const list = await api.getChats();
       setGroups(list);
@@ -284,9 +285,12 @@ export default function ChatsScreen() {
       }
       return list;
     } catch (e) {
+      if (e instanceof Error && (e.message.includes('Authentication') || e.message.includes('required'))) {
+        return [];
+      }
       console.error(e);
     }
-  }, [authUser?.role]);
+  }, [authUser]);
 
   const loadMessages = useCallback(async (id: number) => {
     const msgs = await api.getChatMessages(id);
@@ -295,16 +299,23 @@ export default function ChatsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (!authUser) {
+        setLoading(false);
+        return;
+      }
       (async () => {
         try {
           await loadGroups();
         } catch (e) {
+          if (e instanceof Error && (e.message.includes('Authentication') || e.message.includes('required'))) {
+            return;
+          }
           Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل التحميل');
         } finally {
           setLoading(false);
         }
       })();
-    }, [loadGroups])
+    }, [authUser, loadGroups])
   );
 
   useEffect(() => {

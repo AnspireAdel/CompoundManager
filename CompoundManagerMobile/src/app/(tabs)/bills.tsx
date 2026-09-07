@@ -63,6 +63,7 @@ export default function BillsScreen() {
   const [showFilterPicker, setShowFilterPicker] = useState(false);
 
   async function load() {
+    if (!authUser) return;
     try {
       const list = await api.getBills();
       setBills(list);
@@ -71,14 +72,19 @@ export default function BillsScreen() {
         setResidents(resList);
       }
     } catch (e) {
+      if (e instanceof Error && (e.message.includes('Authentication') || e.message.includes('required'))) {
+        return;
+      }
       console.error(e);
     }
   }
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [isStaff])
+      if (authUser) {
+        load();
+      }
+    }, [authUser, isStaff])
   );
 
   async function handleUploadProof(bill: Bill) {

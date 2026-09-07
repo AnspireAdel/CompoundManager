@@ -74,10 +74,12 @@ export default function ProfileScreen() {
   const [resettingPass, setResettingPass] = useState(false);
 
   const loadProfile = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!user) return;
     if (!opts?.silent) setLoading(true);
     try {
-      const [me, types] = await Promise.all([refreshUser(), api.getServiceTypes()]);
+      const me = await refreshUser();
       if (!me) return;
+      const types = await api.getServiceTypes();
       setServiceTypes(types);
       setForm({
         username: me.username || '',
@@ -119,18 +121,23 @@ export default function ProfileScreen() {
         setDepPreviewUsername(suggested.username);
       }
     } catch (e) {
+      if (e instanceof Error && (e.message.includes('Authentication') || e.message.includes('required'))) {
+        return;
+      }
       console.error(e);
       Alert.alert('خطأ', e instanceof Error ? e.message : 'فشل التحميل');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [refreshUser]);
+  }, [user, refreshUser]);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfile({ silent: true });
-    }, [loadProfile])
+      if (user) {
+        loadProfile({ silent: true });
+      }
+    }, [user, loadProfile])
   );
 
   async function onRefresh() {

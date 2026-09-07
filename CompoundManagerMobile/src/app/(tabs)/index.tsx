@@ -272,6 +272,7 @@ export default function HomeScreen() {
   const isHousehold = isOwner || isDependent;
 
   async function load() {
+    if (!user) return;
     try {
       await refreshUser().catch(() => {});
       const n = await api.getUnreadCount();
@@ -282,14 +283,19 @@ export default function HomeScreen() {
         setBills(await api.getBills());
       }
     } catch (e) {
+      if (e instanceof Error && (e.message.includes('Authentication') || e.message.includes('required'))) {
+        return;
+      }
       console.error(e);
     }
   }
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [isStaff, year])
+      if (user) {
+        load();
+      }
+    }, [user, isStaff, year])
   );
 
   const unpaid = bills.filter((b) => b.status !== 'PAID');
@@ -624,30 +630,30 @@ export default function HomeScreen() {
               <ScrollTable
                 headers={[
                   'الشهر',
-                  'إجمالي المصروف',
                   ...(stats.yearlyExpenseBreakdown?.expenseTypes || []).map((t) => t.name),
+                  'إجمالي المصروف',
                 ]}
                 widths={[
                   110,
-                  130,
                   ...(stats.yearlyExpenseBreakdown?.expenseTypes || []).map(() => 120),
+                  130,
                 ]}
                 rows={(stats.yearlyExpenseBreakdown?.rows || []).map((row) => [
                   { text: row.label, bold: true },
-                  { text: money(row.total) },
                   ...(stats.yearlyExpenseBreakdown?.expenseTypes || []).map((t) => ({
                     text: money(row.byType[String(t.id)]),
                   })),
+                  { text: money(row.total), bold: true },
                 ])}
                 footer={
                   stats.yearlyExpenseBreakdown?.totals
                     ? [
                         { text: 'الإجمالي', bold: true },
-                        { text: money(stats.yearlyExpenseBreakdown.totals.total), bold: true },
                         ...(stats.yearlyExpenseBreakdown.expenseTypes || []).map((t) => ({
                           text: money(stats.yearlyExpenseBreakdown!.totals.byType[String(t.id)]),
                           bold: true,
                         })),
+                        { text: money(stats.yearlyExpenseBreakdown.totals.total), bold: true },
                       ]
                     : undefined
                 }

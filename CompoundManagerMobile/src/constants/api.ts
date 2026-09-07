@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 /** true = local backend, false = production Render */
-export const isStaging = false;
+export const isStaging = true;
 
 const PRODUCTION_API = 'https://compoundmanager-2pm1.onrender.com/api';
 

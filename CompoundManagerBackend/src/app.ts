@@ -32,6 +32,10 @@ app.get(['/privacy', '/privacy-policy'], (_req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'privacy.html'));
 });
 
+app.get(['/support', '/help'], (_req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'support.html'));
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',

@@ -1,17 +1,20 @@
 import React, { useEffect, useRef } from 'react';
-import { Dimensions, StyleSheet, StatusBar, View } from 'react-native';
+import { Dimensions, StyleSheet, StatusBar } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withRepeat,
+  withSequence,
+  cancelAnimation,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
 import * as SplashScreen from 'expo-splash-screen';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SPLASH_DURATION_MS = 3000;
 
 interface AnimatedSplashScreenProps {
@@ -20,10 +23,6 @@ interface AnimatedSplashScreenProps {
 }
 
 export function AnimatedSplashScreen({ isReady, onFinish }: AnimatedSplashScreenProps) {
-  const logoOpacity = useSharedValue(1);
-  const logoScale = useSharedValue(1);
-  const logoTranslateY = useSharedValue(0);
-
   const bgScale = useSharedValue(1);
   const bgOpacity = useSharedValue(1);
 
@@ -38,6 +37,18 @@ export function AnimatedSplashScreen({ isReady, onFinish }: AnimatedSplashScreen
     requestAnimationFrame(() => {
       SplashScreen.hideAsync().catch(() => {});
     });
+
+    // Subtle continuous "breathing" zoom on the background art while we wait.
+    // Starts at scale 1 (matching the native splash frame exactly, so there's
+    // no visible jump at the handoff above) and gently oscillates from there.
+    bgScale.value = withRepeat(
+      withSequence(
+        withTiming(1.03, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      false
+    );
   }, []);
 
   // Stay on splash for at least 3s, then fade out once the app is ready
@@ -46,6 +57,9 @@ export function AnimatedSplashScreen({ isReady, onFinish }: AnimatedSplashScreen
 
     const remaining = Math.max(0, SPLASH_DURATION_MS - (Date.now() - startedAtRef.current));
     const exitTimer = setTimeout(() => {
+      cancelAnimation(bgScale);
+      bgScale.value = withTiming(1, { duration: 200 });
+
       containerScale.value = withTiming(1.04, {
         duration: 450,
         easing: Easing.inOut(Easing.cubic),
@@ -67,11 +81,6 @@ export function AnimatedSplashScreen({ isReady, onFinish }: AnimatedSplashScreen
 
     return () => clearTimeout(exitTimer);
   }, [isReady]);
-
-  const animatedLogoStyle = useAnimatedStyle(() => ({
-    opacity: logoOpacity.value,
-    transform: [{ translateY: logoTranslateY.value }, { scale: logoScale.value }],
-  }));
 
   const animatedBgStyle = useAnimatedStyle(() => ({
     opacity: bgOpacity.value,
@@ -115,17 +124,6 @@ export function AnimatedSplashScreen({ isReady, onFinish }: AnimatedSplashScreen
         locations={[0.25, 0.45, 0.65]}
         style={styles.mistOverlay}
       />
-
-      {/* Animated Centered Logo & Arabic Branding */}
-      <View style={styles.logoWrapper}>
-        <Animated.View style={[styles.logoContainer, animatedLogoStyle]}>
-          <Image
-            source={require('@/assets/images/splash-icon.png')}
-            style={styles.logoImage}
-            contentFit="contain"
-          />
-        </Animated.View>
-      </View>
     </Animated.View>
   );
 }
@@ -157,25 +155,5 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-  },
-  logoWrapper: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: SCREEN_HEIGHT * 0.23, // Matches Figma screen positioning
-  },
-  logoContainer: {
-    width: SCREEN_WIDTH * 0.46,
-    height: SCREEN_WIDTH * 0.62,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
   },
 });

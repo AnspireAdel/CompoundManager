@@ -7,6 +7,7 @@ export default function TabLayout() {
   
   return (
     <Tabs
+      backBehavior="firstRoute"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#024C59',

@@ -3,13 +3,12 @@ import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Switch, RefreshControl, Modal, Dimensions
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api, Resident, ServiceType, Dependent } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import PasswordInput from '@/components/PasswordInput';
-import { BottomTabInset } from '@/constants/theme';
 import { Screen } from '@/components/screen';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -24,8 +23,10 @@ export default function ProfileScreen() {
   const { user, refreshUser } = useAuth();
   const tableScrollRef = useRef<ScrollView>(null);
   const hasScrolledToEnd = useRef(false);
-  const insets = useSafeAreaInsets();
-  const tabPad = BottomTabInset + Math.max(insets.bottom, 0);
+  // This screen renders inside the Tabs navigator (just hidden from the tab
+  // bar via href: null), so the navigator already extends the visible tab
+  // bar itself by the device's safe-area inset and sizes this screen's
+  // content area to sit right above it — no extra bottom padding needed here.
 
   const isOwner = user?.role === 'OWNER';
   const isDependent = user?.role === 'DEPENDENT';
@@ -369,7 +370,7 @@ export default function ProfileScreen() {
         <Text style={styles.pageTitle}>الملف الشخصي</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: tabPad }} showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false}>
         
         {/* CARD 1: REGISTRATION DATA (Read-only) - Residents (Owners/Dependents) only */}
         {!isStaff && resident && (

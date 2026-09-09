@@ -18,7 +18,7 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +34,6 @@ import {
 } from 'expo-audio';
 import { api, ChatGroupSummary, ChatMessage, resolveUploadUrl, Resident } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
-import { BottomTabInset } from '@/constants/theme';
 import { Screen } from '@/components/screen';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -242,8 +241,10 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
 
 export default function ChatsScreen() {
   const { user: authUser } = useAuth();
-  const insets = useSafeAreaInsets();
-  const tabPad = BottomTabInset + Math.max(insets.bottom, 0);
+  // This screen renders inside the Tabs navigator (just hidden from the tab
+  // bar via href: null), so the navigator already extends the visible tab
+  // bar itself by the device's safe-area inset and sizes this screen's
+  // content area to sit right above it — no extra bottom padding needed here.
   const isDependent = authUser?.role === 'DEPENDENT';
   const isSuperAdmin = authUser?.role === 'SUPERADMIN';
 
@@ -633,7 +634,7 @@ export default function ChatsScreen() {
 
               {/* Composer Inputs */}
               {recording ? (
-                <View style={[styles.recordBar, { paddingBottom: 12 + tabPad }]}>
+                <View style={styles.recordBar}>
                   <TouchableOpacity style={styles.recordCancel} onPress={cancelRecording}>
                     <Ionicons name="trash-outline" size={20} color="#EF4444" />
                   </TouchableOpacity>
@@ -655,7 +656,7 @@ export default function ChatsScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <View style={[styles.composer, { paddingBottom: 10 + tabPad }]}>
+                <View style={styles.composer}>
                   <Pressable
                     style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed, sending && styles.disabled]}
                     onPress={handleAttach}

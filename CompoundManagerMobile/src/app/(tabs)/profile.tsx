@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Switch, RefreshControl, Modal, Dimensions
@@ -22,6 +22,8 @@ function displayValue(value: string | number | null | undefined) {
 
 export default function ProfileScreen() {
   const { user, refreshUser } = useAuth();
+  const tableScrollRef = useRef<ScrollView>(null);
+  const hasScrolledToEnd = useRef(false);
   const insets = useSafeAreaInsets();
   const tabPad = BottomTabInset + Math.max(insets.bottom, 0);
 
@@ -535,7 +537,19 @@ export default function ProfileScreen() {
             <Text style={styles.hintSub}>أفراد عائلتك المرتبطون بوحدتك - يمكنهم تسجيل الدخول باستخدام الحسابات أدناه</Text>
 
             {/* Table layout for dependents */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ marginTop: 16 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={true}
+              style={{ marginTop: 16 }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+              ref={tableScrollRef}
+              onContentSizeChange={() => {
+                if (!hasScrolledToEnd.current) {
+                  hasScrolledToEnd.current = true;
+                  tableScrollRef.current?.scrollToEnd({ animated: false });
+                }
+              }}
+            >
               <View style={styles.tableContainer}>
                 {/* Table Headers */}
                 <View style={styles.tableHeader}>

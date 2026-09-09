@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function TransactionsScreen() {
   const { isStaff, user: authUser } = useAuth();
+  const tableScrollRef = useRef<ScrollView>(null);
+  const hasScrolledToEnd = useRef(false);
   const [rows, setRows] = useState<Transaction[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -58,7 +60,19 @@ export default function TransactionsScreen() {
       </View>
 
       {/* 3. HORIZONTAL SCROLLABLE DATA TABLE */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.tableScroll}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={true}
+        style={styles.tableScroll}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+        ref={tableScrollRef}
+        onContentSizeChange={() => {
+          if (!hasScrolledToEnd.current) {
+            hasScrolledToEnd.current = true;
+            tableScrollRef.current?.scrollToEnd({ animated: false });
+          }
+        }}
+      >
         <View style={styles.tableContainer}>
           {/* Table Headers */}
           <View style={styles.tableHeader}>

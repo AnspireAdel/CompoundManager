@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert, Text, TextInput, TouchableOpacity, View, StyleSheet,
   ScrollView, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions
@@ -13,6 +13,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function UnitTypesScreen() {
   const { isStaff, user: authUser } = useAuth();
+  const tableScrollRef = useRef<ScrollView>(null);
+  const hasScrolledToEnd = useRef(false);
   const [types, setTypes] = useState<UnitType[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -173,7 +175,19 @@ export default function UnitTypesScreen() {
       </View>
 
       {/* 3. HORIZONTAL DATA TABLE */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.tableScroll}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={true}
+        style={styles.tableScroll}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+        ref={tableScrollRef}
+        onContentSizeChange={() => {
+          if (!hasScrolledToEnd.current) {
+            hasScrolledToEnd.current = true;
+            tableScrollRef.current?.scrollToEnd({ animated: false });
+          }
+        }}
+      >
         <View style={styles.tableContainer}>
           {/* Table Headers */}
           <View style={styles.tableHeader}>

@@ -26,7 +26,10 @@ export function Screen({
       {headerShown && (
         <View style={styles.header}>
           {back ? (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <TouchableOpacity
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+              style={styles.backBtn}
+            >
               <Text style={styles.backText}>رجوع</Text>
             </TouchableOpacity>
           ) : (
@@ -50,7 +53,7 @@ export function Screen({
 
 export const ui = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  row: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   label: { fontWeight: '600', marginBottom: 6, textAlign: 'right', color: '#334155' },
   input: {
     borderWidth: 1,
@@ -92,7 +95,7 @@ export const ui = StyleSheet.create({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f1f5f9' },
   header: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,

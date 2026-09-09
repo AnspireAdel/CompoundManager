@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Text, TouchableOpacity, View, StyleSheet, ScrollView, Image,
   Dimensions, ActivityIndicator, Alert, Modal, Pressable, Platform, Linking
@@ -189,6 +189,8 @@ function ScrollTable({
   widths: number[];
 }) {
   const totalWidth = widths.reduce((sum, w) => sum + w, 0);
+  const tableScrollRef = useRef<ScrollView>(null);
+  const hasScrolledToEnd = useRef(false);
 
   function renderRow(
     cells: TableCell[],
@@ -239,7 +241,19 @@ function ScrollTable({
 
   return (
     <View style={styles.tableOuterWrap}>
-      <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator>
+      <ScrollView
+        horizontal
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+        ref={tableScrollRef}
+        onContentSizeChange={() => {
+          if (!hasScrolledToEnd.current) {
+            hasScrolledToEnd.current = true;
+            tableScrollRef.current?.scrollToEnd({ animated: false });
+          }
+        }}
+      >
         <View style={styles.tableInnerWrap}>
           {renderRow(
             (headers || []).map((title) => ({ text: title, bold: true })),

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -92,6 +92,8 @@ function EmptyPaymentsIllustration() {
 
 export default function PaymentsScreen() {
   const { user: authUser } = useAuth();
+  const tableScrollRef = useRef<ScrollView>(null);
+  const hasScrolledToEnd = useRef(false);
   const router = useRouter();
 
   const [proofs, setProofs] = useState<PaymentProof[]>([]);
@@ -250,6 +252,13 @@ export default function PaymentsScreen() {
             horizontal
             showsHorizontalScrollIndicator={true}
             contentContainerStyle={styles.scrollContent}
+            ref={tableScrollRef}
+            onContentSizeChange={() => {
+              if (!hasScrolledToEnd.current) {
+                hasScrolledToEnd.current = true;
+                tableScrollRef.current?.scrollToEnd({ animated: false });
+              }
+            }}
           >
             <View style={styles.table}>
               {/* Table Header */}
@@ -546,7 +555,7 @@ export default function PaymentsScreen() {
 const styles = StyleSheet.create({
   // 1. Top Header
   topHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
@@ -580,7 +589,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
   },
   profileSection: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 10,
   },
@@ -649,6 +658,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     minWidth: '100%',
+    flexGrow: 1,
+    justifyContent: 'flex-end',
   },
   table: {
     minWidth: 790,
@@ -725,7 +736,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sheetHeaderRow: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,

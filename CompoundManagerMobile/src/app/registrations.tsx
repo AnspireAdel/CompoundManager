@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -20,6 +20,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function RegistrationsScreen() {
   const { user: authUser } = useAuth();
+  const tableScrollRef = useRef<ScrollView>(null);
+  const hasScrolledToEnd = useRef(false);
   const router = useRouter();
 
   const [users, setUsers] = useState<User[]>([]);
@@ -175,6 +177,13 @@ export default function RegistrationsScreen() {
           horizontal
           showsHorizontalScrollIndicator={true}
           contentContainerStyle={styles.scrollContent}
+          ref={tableScrollRef}
+          onContentSizeChange={() => {
+            if (!hasScrolledToEnd.current) {
+              hasScrolledToEnd.current = true;
+              tableScrollRef.current?.scrollToEnd({ animated: false });
+            }
+          }}
         >
           <View style={styles.table}>
             {/* Table Header */}
@@ -427,7 +436,7 @@ export default function RegistrationsScreen() {
 const styles = StyleSheet.create({
   // 1. Top Header
   topHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
@@ -461,7 +470,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
   },
   profileSection: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 10,
   },
@@ -511,6 +520,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     minWidth: '100%',
+    flexGrow: 1,
+    justifyContent: 'flex-end',
   },
   table: {
     minWidth: 920,

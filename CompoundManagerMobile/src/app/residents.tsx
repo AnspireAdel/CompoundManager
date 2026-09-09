@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert, Text, TextInput, TouchableOpacity, View, StyleSheet,
   ScrollView, ActivityIndicator, Modal, Pressable, Dimensions, KeyboardAvoidingView, Platform
@@ -31,6 +31,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ResidentsScreen() {
   const { user: authUser } = useAuth();
+  const tableScrollRef = useRef<ScrollView>(null);
+  const hasScrolledToEnd = useRef(false);
   const [rows, setRows] = useState<Resident[]>([]);
   const [types, setTypes] = useState<UnitType[]>([]);
   const [search, setSearch] = useState('');
@@ -197,7 +199,19 @@ export default function ResidentsScreen() {
       </View>
 
       {/* 4. HORIZONTAL SCROLLABLE DATA TABLE */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.tableScroll}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={true}
+        style={styles.tableScroll}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+        ref={tableScrollRef}
+        onContentSizeChange={() => {
+          if (!hasScrolledToEnd.current) {
+            hasScrolledToEnd.current = true;
+            tableScrollRef.current?.scrollToEnd({ animated: false });
+          }
+        }}
+      >
         <View style={styles.tableContainer}>
           {/* Table Headers */}
           <View style={styles.tableHeader}>

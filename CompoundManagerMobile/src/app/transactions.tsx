@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api, Transaction } from '@/api/client';
 import { Screen } from '@/components/screen';
@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function TransactionsScreen() {
+  const router = useRouter();
   const { isStaff, user: authUser } = useAuth();
   const tableScrollRef = useRef<ScrollView>(null);
   const hasScrolledToEnd = useRef(false);
@@ -40,18 +41,18 @@ export default function TransactionsScreen() {
       {/* 1. CUSTOM TOP HEADER */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.headerIconBtn}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={24} color="#024C59" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.profileSection}>
+        <TouchableOpacity style={styles.profileSection} onPress={() => router.push('/profile')}>
           <View style={styles.profileTextContainer}>
             <Text style={styles.greetText}>مرحباً،</Text>
             <Text style={styles.userName}>{authUser?.name || 'مستخدم'}</Text>
           </View>
           <Ionicons name="person-circle" size={44} color="#024C59" />
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* 2. SUBHEADER */}

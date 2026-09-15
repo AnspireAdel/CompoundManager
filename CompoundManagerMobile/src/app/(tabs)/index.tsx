@@ -367,7 +367,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.profileSection} onPress={() => setDrawerOpen(true)}>
+        <TouchableOpacity style={styles.profileSection} onPress={() => router.push('/profile')}>
           <View style={styles.profileTextContainer}>
             <Text style={styles.greetText}>مرحباً،</Text>
             <Text style={styles.userName}>{user?.name || 'مستخدم'}</Text>

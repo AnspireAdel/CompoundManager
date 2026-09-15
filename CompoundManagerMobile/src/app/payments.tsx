@@ -223,13 +223,13 @@ export default function PaymentsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.profileSection}>
+        <TouchableOpacity style={styles.profileSection} onPress={() => router.push('/profile')}>
           <View style={styles.profileTextWrap}>
             <Text style={styles.greetText}>مرحباً،</Text>
             <Text style={styles.userName}>{authUser?.name || 'محمد عبد الله'}</Text>
           </View>
           <Ionicons name="person-circle" size={44} color="#024C59" />
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Dotted Divider */}

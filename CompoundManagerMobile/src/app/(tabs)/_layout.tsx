@@ -1,10 +1,12 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 
 export default function TabLayout() {
   const { isStaff } = useAuth();
-  
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       backBehavior="firstRoute"
@@ -16,8 +18,11 @@ export default function TabLayout() {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#F1F5F9',
-          height: 60,
-          paddingBottom: 8,
+          // Android 15+ enforces edge-to-edge, so the app draws behind the
+          // system navigation bar — without adding its inset here, this
+          // fixed-height tab bar renders underneath it instead of above it.
+          height: 60 + insets.bottom,
+          paddingBottom: 8 + insets.bottom,
           paddingTop: 8,
         },
         tabBarLabelStyle: {

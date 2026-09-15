@@ -167,18 +167,18 @@ export default function SendNotificationsScreen() {
       {/* 1. CUSTOM TOP HEADER */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.headerIconBtn}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={24} color="#024C59" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.profileSection}>
+        <TouchableOpacity style={styles.profileSection} onPress={() => router.push('/profile')}>
           <View style={styles.profileTextContainer}>
             <Text style={styles.greetText}>مرحباً،</Text>
             <Text style={styles.userName}>{authUser?.name || 'مستخدم'}</Text>
           </View>
           <Ionicons name="person-circle" size={44} color="#024C59" />
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* 2. SUBHEADER & ACTIONS */}

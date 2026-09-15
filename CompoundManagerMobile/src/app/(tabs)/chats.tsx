@@ -19,7 +19,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -240,6 +240,7 @@ function MessageBubble({ item, mine }: { item: ChatMessage; mine: boolean }) {
 }
 
 export default function ChatsScreen() {
+  const router = useRouter();
   const { user: authUser } = useAuth();
   // This screen renders inside the Tabs navigator (just hidden from the tab
   // bar via href: null), so the navigator already extends the visible tab
@@ -758,18 +759,18 @@ export default function ChatsScreen() {
       {/* 1. CUSTOM TOP HEADER */}
       <View style={styles.topHeader}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.headerIconBtn}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={24} color="#024C59" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.profileSection}>
+        <TouchableOpacity style={styles.profileSection} onPress={() => router.push('/profile')}>
           <View style={styles.profileTextContainer}>
             <Text style={styles.greetText}>مرحباً،</Text>
             <Text style={styles.userName}>{authUser?.name || 'مستخدم'}</Text>
           </View>
           <Ionicons name="person-circle" size={44} color="#024C59" />
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* 2. SUBHEADER & ACTIONS */}

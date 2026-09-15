@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Switch, RefreshControl, Modal, Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api, Resident, ServiceType, Dependent } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
@@ -20,6 +20,7 @@ function displayValue(value: string | number | null | undefined) {
 }
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { user, refreshUser } = useAuth();
   const tableScrollRef = useRef<ScrollView>(null);
   const hasScrolledToEnd = useRef(false);
@@ -351,7 +352,7 @@ export default function ProfileScreen() {
       {/* 1. CUSTOM TOP HEADER */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.headerIconBtn}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={24} color="#024C59" />
           </TouchableOpacity>
         </View>

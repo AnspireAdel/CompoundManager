@@ -14,7 +14,8 @@
     },
     "ios": {
       "bundleIdentifier": "com.anspire.compoundmanager",
-      "buildNumber": "4",
+      "buildNumber": "5",
+      "appleTeamId": "636RJF6ZWY",
       "supportsTablet": true,
       "icon": "./assets/images/icon.png",
       "infoPlist": {
@@ -29,7 +30,7 @@
     },
     "android": {
       "package": "com.anspire.compoundmanager",
-      "versionCode": 1,
+      "versionCode": 3,
       "permissions": [
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS",

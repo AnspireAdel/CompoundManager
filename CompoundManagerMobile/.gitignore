@@ -18,6 +18,11 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Keep the Play Store upload key in the project (do not lose this)
+!credentials/android/jcity-release.keystore
+!credentials/android/keystore.properties
+!credentials/android/ALIAS_AND_PASSWORD.txt
+
 # Metro
 .metro-health-check*
 
@@ -39,5 +44,19 @@ yarn-error.*
 example
 
 # generated native folders
-/ios
+/ios/*
+!/ios/Jcity/
+!/ios/Jcity.xcodeproj/
+/ios/Jcity/*
+!/ios/Jcity/AppDelegate.swift
+!/ios/Jcity/SceneDelegate.swift
+!/ios/Jcity/Info.plist
+/ios/Jcity.xcodeproj/*
+!/ios/Jcity.xcodeproj/project.pbxproj
+
+# Keep these iOS files tracked: expo prebuild regenerates ios/ from scratch,
+# but AppDelegate/SceneDelegate/Info.plist/project.pbxproj carry a manual
+# UIScene lifecycle fix (Xcode 27 crashes any app without it) that prebuild
+# doesn't know to reapply.
+
 /android
